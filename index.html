@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>現金管理ツール</title>
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+  <h1 class="text-2xl font-bold mb-6">現金管理ツール</h1>
+
+  <!-- ===== タブナビゲーション ===== -->
+  <div id="tabs" class="flex space-x-2 mb-4">
+    <button data-tab="tab-1F" class="tab-btn bg-blue-600 text-white px-4 py-2 rounded">1F</button>
+    <button data-tab="tab-2F" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded">2F</button>
+    <button data-tab="tab-final" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded ml-auto">最終</button>
+  </div>
+
+  <!-- ===== コンテンツラッパー ===== -->
+  <div id="tab-contents"></div>
+
+  <!-- ===== Floor テンプレート ===== -->
+  <template id="floor-template">
+    <section class="bg-white shadow rounded-xl p-6 mb-10" data-floor="">
+      <h2 class="text-xl font-semibold mb-4"><!-- floor name --></h2>
+
+      <!-- 前日の現金 -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">前日の現金 (円)</label>
+        <input type="text" inputmode="numeric" class="prev-cash floor-input w-full border rounded p-2" value="0" />
+      </div>
+
+      <!-- 入・出 横並び -->
+      <div class="flex flex-col md:flex-row md:space-x-6">
+        <!-- 入 -->
+        <div class="mb-6 flex-1">
+          <h3 class="text-lg font-medium mb-2">入 (円)</h3>
+          <table class="min-w-full mb-2" data-type="in-table"></table>
+          <button type="button" class="add-row bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-sm" data-type="in">追加</button>
+          <p class="mt-2">件数: <span class="in-count font-semibold">0</span>　合計: <span class="in-total font-semibold">0</span> 円</p>
+        </div>
+
+        <!-- 出 -->
+        <div class="mb-6 flex-1">
+          <h3 class="text-lg font-medium mb-2">出 (円)</h3>
+          <table class="min-w-full mb-2" data-type="out-table"></table>
+          <button type="button" class="add-row bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-sm" data-type="out">追加</button>
+          <p class="mt-2">件数: <span class="out-count font-semibold">0</span>　合計: <span class="out-total font-semibold">0</span> 円</p>
+        </div>
+      </div>
+
+      <!-- 当日現金 -->
+      <div class="mb-6">
+        <h3 class="text-lg font-medium mb-2">当日現金</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label class="block text-sm mb-1">100万のまとまり (束数または金額)</label>
+            <input type="text" inputmode="numeric" class="bundle-count floor-input w-full border rounded p-2" value="0" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">100万以外の端数札り (円)</label>
+            <input type="text" inputmode="numeric" class="partial-cash floor-input w-full border rounded p-2" value="0" />
+          </div>
+        </div>
+
+        <h4 class="font-medium mb-2">小銭 (枚数を入力)</h4>
+        <div class="coin-grid grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+        <p class="mt-2">小銭 合計: <span class="coin-total font-semibold">0</span> 円</p>
+      </div>
+
+      <!-- 差分 -->
+      <div class="border-t pt-4">
+        <p>当日現金 合計: <span class="today-total font-semibold">0</span> 円</p>
+        <p>期待値 (前日現金 + 入 - 出): <span class="expected-total font-semibold">0</span> 円</p>
+        <p class="text-lg mt-2">差分: <span class="diff font-bold">0</span> 円</p>
+        <p class="status-label text-green-600 font-semibold"></p>
+      </div>
+    </section>
+  </template>
+
+  <!-- ===== コイン入力用テンプレート ===== -->
+  <template id="coin-row-template">
+    <div>
+      <label class="block text-sm mb-1"><!-- coin label --></label>
+      <input type="text" inputmode="numeric" class="coin-count floor-input w-full border rounded p-2" data-value="" value="0" />
+    </div>
+  </template>
+
+  <!-- ===== Final テンプレート ===== -->
+  <template id="final-template">
+    <section class="bg-white shadow rounded-xl p-6 mb-10 hidden" id="tab-final" data-tab-content>
+      <h2 class="text-xl font-semibold mb-4">最終集計</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 class="font-medium mb-2">1F まとめ</h3>
+          <p>入 件数: <span id="sum-1F-in-count">0</span></p>
+          <p>入 合計: <span id="sum-1F-in-total">0</span> 円</p>
+          <p>出 件数: <span id="sum-1F-out-count">0</span></p>
+          <p>出 合計: <span id="sum-1F-out-total">0</span> 円</p>
+        </div>
+        <div>
+          <h3 class="font-medium mb-2">2F まとめ</h3>
+          <p>入 件数: <span id="sum-2F-in-count">0</span></p>
+          <p>入 合計: <span id="sum-2F-in-total">0</span> 円</p>
+          <p>出 件数: <span id="sum-2F-out-count">0</span></p>
+          <p>出 合計: <span id="sum-2F-out-total">0</span> 円</p>
+        </div>
+      </div>
+      <hr class="my-4">
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">前日の総合計 (円)</label>
+        <input type="text" inputmode="numeric" id="prev-total-all" class="w-full border rounded p-2" value="0" />
+      </div>
+      <p>今日の現金総合計: <span id="today-total-all" class="font-semibold">0</span> 円</p>
+      <p class="text-lg mt-2">差分: <span id="diff-all" class="font-bold">0</span> 円</p>
+    </section>
+  </template>
+
+  <!-- ===== JavaScript ===== -->
+<script>
+/*************************
+ * 定数 & ユーティリティ
+ *************************/
+const COINS = [
+  { label: '500円', value: 500 },
+  { label: '100円', value: 100 },
+  { label: '50円',  value: 50 },
+  { label: '10円',  value: 10 },
+  { label: '5円',   value: 5  },
+  { label: '1円',   value: 1  }
+];
+
+const fmt  = (n)  => n.toLocaleString();
+const num  = (v)  => { const s = String(v||'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
+
+/*************************
+ * タブ切替
+ *************************/
+document.getElementById('tabs').addEventListener('click', e => {
+  if(!e.target.classList.contains('tab-btn')) return;
+  const tgt = e.target.dataset.tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const on = b.dataset.tab===tgt;
+    b.classList.toggle('bg-blue-600',on);
+    b.classList.toggle('text-white', on);
+    b.classList.toggle('bg-gray-300',!on);
+    b.classList.toggle('text-gray-800',!on);
+  });
+  document.querySelectorAll('[data-tab-content]')
+    .forEach(sec=>sec.classList.toggle('hidden',sec.id!==tgt));
+});
+
+/*************************
+ * 行追加ヘルパー
+ *************************/
+function addRow(tbl, cls){
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  const inp= document.createElement('input');
+  inp.type='text'; inp.inputMode='numeric'; inp.value='0';
+  inp.className=`${cls} floor-input w-full border rounded p-2`;
+  td.appendChild(inp); tr.appendChild(td); tbl.appendChild(tr);
+}
+
+/*************************
+ * 1F / 2F セクション生成
+ *************************/
+const sections={};
+['1F','2F'].forEach(floor=>{
+  const base = document.getElementById('floor-template').content.cloneNode(true);
+  const sec  = base.querySelector('section');
+  sec.id=`tab-${floor}`; sec.dataset.floor=floor;
+  sec.setAttribute('data-tab-content','');
+  if(floor!=='1F') sec.classList.add('hidden');
+  sec.querySelector('h2').textContent=floor;
+
+  // 入/出テーブル初期5行
+  const inT = sec.querySelector('[data-type="in-table"]');
+  const ouT = sec.querySelector('[data-type="out-table"]');
+  for(let i=0;i<5;i++){
+    addRow(inT,`floor-${floor}-in`);
+    addRow(ouT,`floor-${floor}-out`);
+  }
+
+  // 小銭行
+  const coinGrid = sec.querySelector('.coin-grid');
+  const coinTpl  = document.getElementById('coin-row-template');
+  COINS.forEach(({label,value})=>{
+    const c=coinTpl.content.cloneNode(true);
+    c.querySelector('label').textContent=label;
+    c.querySelector('input').dataset.value=value;
+    coinGrid.appendChild(c);
+  });
+
+  // 行追加ボタン
+  sec.querySelectorAll('.add-row').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const kind = btn.dataset.type; // in | out
+      const tbl  = sec.querySelector(`[data-type=\"${kind}-table\"]`);
+      addRow(tbl,`floor-${floor}-${kind}`);
+      recalcSec(sec); recalcFinal();
+    });
+  });
+
+  // 入力/blur/focus
+  sec.addEventListener('input', ()=>{recalcSec(sec); recalcFinal();});
+  sec.addEventListener('blur', e=>{
+    if(e.target.classList.contains('floor-input')){
+      e.target.value = fmt(num(e.target.value));
+      recalcSec(sec); recalcFinal();
+    }
+  },true);
+  sec.addEventListener('focus', e=>{
+    if(e.target.classList.contains('floor-input'))
+      e.target.value = String(num(e.target.value));
+  },true);
+
+  document.getElementById('tab-contents').appendChild(sec);
+  recalcSec(sec); sections[floor]=sec;
+});
+
+/*************************
+ * 最終タブ生成
+ *************************/
+{
+  const tpl=document.getElementById('final-template').content.cloneNode(true);
+  const final=tpl.querySelector('section');
+  document.getElementById('tab-contents').appendChild(final);
+
+  const prev=final.querySelector('#prev-total-all');
+  prev.addEventListener('blur',()=>{prev.value=fmt(num(prev.value));recalcFinal();});
+  prev.addEventListener('focus',()=>{prev.value=String(num(prev.value));});
+}
+
+/*************************
+ * 計算
+ *************************/
+function recalcSec(sec){
+  const f=sec.dataset.floor, selIn=`.floor-${f}-in`, selOut=`.floor-${f}-out`;
+  const sum = sel=>[...sec.querySelectorAll(sel)].reduce((a,e)=>a+num(e.value),0);
+  const cnt = sel=>[...sec.querySelectorAll(sel)].filter(e=>num(e.value)>0).length;
+
+  const inTot=sum(selIn), outTot=sum(selOut);
+  sec.querySelector('.in-total').textContent = fmt(inTot);
+  sec.querySelector('.out-total').textContent= fmt(outTot);
+  sec.querySelector('.in-count').textContent = cnt(selIn);
+  sec.querySelector('.out-count').textContent= cnt(selOut);
+
+  const coinTot=[...sec.querySelectorAll('.coin-count')]
+    .reduce((a,e)=>a+num(e.value)*parseInt(e.dataset.value,10),0);
+  sec.querySelector('.coin-total').textContent=fmt(coinTot);
+
+  const bundleRaw=num(sec.querySelector('.bundle-count').value);
+  const bundleAmt=bundleRaw>=1_000_000?bundleRaw:bundleRaw*1_000_000;
+  const partial =num(sec.querySelector('.partial-cash').value);
+  const today   = bundleAmt+partial+coinTot;
+  sec.querySelector('.today-total').textContent=fmt(today);
+
+  const prev=num(sec.querySelector('.prev-cash').value);
+  const expect=prev+inTot-outTot;
+  sec.querySelector('.expected-total').textContent=fmt(expect);
+  const diff=expect-today;
+  sec.querySelector('.diff').textContent=fmt(diff);
+  sec.querySelector('.status-label').textContent= diff===30_000_000?'問題なし':'';
+
+  Object.assign(sec.dataset,{inTotal:inTot,outTotal:outTot,
+    inCount:cnt(selIn),outCount:cnt(selOut),todayTotal:today});
+}
+
+function recalcFinal(){
+  const fin=document.getElementById('tab-final'); if(!fin) return;
+  const v=(fl,k)=>parseInt(sections[fl].dataset[k]||'0',10);
+
+  fin.querySelector('#sum-1F-in-count').textContent = v('1F','inCount');
+  fin.querySelector('#sum-1F-in-total').textContent = fmt(v('1F','inTotal'));
+  fin.querySelector('#sum-1F-out-count').textContent= v('1F','outCount');
+  fin.querySelector('#sum-1F-out-total').textContent= fmt(v('1F','outTotal'));
+
+  fin.querySelector('#sum-2F-in-count').textContent = v('2F','inCount');
+  fin.querySelector('#sum-2F-in-total').textContent = fmt(v('2F','inTotal'));
+  fin.querySelector('#sum-2F-out-count').textContent= v('2F','outCount');
+  fin.querySelector('#sum-2F-out-total').textContent= fmt(v('2F','outTotal'));
+
+  const todayAll=v('1F','todayTotal')+v('2F','todayTotal');
+  fin.querySelector('#today-total-all').textContent=fmt(todayAll);
+
+  const prevAll=num(document.getElementById('prev-total-all').value);
+  fin.querySelector('#diff-all').textContent=fmt(todayAll-prevAll);
+}
+
+// 初期
+recalcFinal();
+</script>
+
+</body>
+</html>
