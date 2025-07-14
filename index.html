@@ -70,12 +70,37 @@
         <p class="mt-2">小銭 合計: <span class="coin-total font-semibold">0</span> 円</p>
       </div>
 
-      <!-- 差分 -->
+      <!-- 差分テーブル -->
       <div class="border-t pt-4">
-        <p>当日現金 合計: <span class="today-total font-semibold">0</span> 円</p>
-        <p>期待値 (前日現金 + 入 - 出): <span class="expected-total font-semibold">0</span> 円</p>
-        <p class="text-lg mt-2">差分: <span class="diff font-bold">0</span> 円</p>
-        <p class="status-label text-green-600 font-semibold"></p>
+        <table class="w-full text-sm">
+          <tbody>
+            <tr>
+              <th class="text-left pr-4">前日現金</th>
+              <td><span class="prev-val font-semibold">0</span> 円</td>
+            </tr>
+            <tr>
+              <th class="text-left pr-4">入 合計</th>
+              <td class="text-green-600">+<span class="in-total font-semibold">0</span> 円</td>
+            </tr>
+            <tr>
+              <th class="text-left pr-4">出 合計</th>
+              <td class="text-red-600">-<span class="out-total font-semibold">0</span> 円</td>
+            </tr>
+            <tr>
+              <th class="text-left pr-4">当日現金 合計</th>
+              <td><span class="today-total font-semibold">0</span> 円</td>
+            </tr>
+            <tr>
+              <th class="text-left pr-4">期待値</th>
+              <td><span class="expected-total font-semibold">0</span> 円</td>
+            </tr>
+            <tr>
+              <th class="text-left pr-4">差分</th>
+              <td><span class="diff font-bold">0</span> 円</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="status-label text-green-600 font-semibold mt-1"></p>
       </div>
     </section>
   </template>
@@ -260,6 +285,7 @@ function recalcSec(sec){
   sec.querySelector('.today-total').textContent=fmt(today);
 
   const prev=num(sec.querySelector('.prev-cash').value);
+  sec.querySelector('.prev-val').textContent = fmt(prev);
   const expect=prev+inTot-outTot;
   sec.querySelector('.expected-total').textContent=fmt(expect);
   const diff=expect-today;
