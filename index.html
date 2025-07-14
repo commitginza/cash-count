@@ -243,6 +243,7 @@ function recalcSec(sec){
   const cnt = sel=>[...sec.querySelectorAll(sel)].filter(e=>num(e.value)>0).length;
 
   const inTot=sum(selIn), outTot=sum(selOut);
+  const ioDiff = inTot - outTot;
   sec.querySelector('.in-total').textContent = fmt(inTot);
   sec.querySelector('.out-total').textContent= fmt(outTot);
   sec.querySelector('.in-count').textContent = cnt(selIn);
@@ -273,8 +274,15 @@ function recalcSec(sec){
   }
   ledger.textContent = diff === 0 ? `出納帳に${fmt(expect)}円を記入してください。` : '';
 
-  Object.assign(sec.dataset,{inTotal:inTot,outTotal:outTot,
-    inCount:cnt(selIn),outCount:cnt(selOut),todayTotal:today, expectedTotal: expect, floorDiff: today - expect});
+  Object.assign(sec.dataset,{
+    inTotal:inTot,
+    outTotal:outTot,
+    inCount:cnt(selIn),
+    outCount:cnt(selOut),
+    todayTotal:today,
+    expectedTotal: expect,
+    ioDiff       /* ← 入−出 差分を dataset に保存 */
+  });
 }
 
 function recalcFinal(){
@@ -291,11 +299,12 @@ function recalcFinal(){
   fin.querySelector('#sum-2F-out-count').textContent= v('2F','outCount');
   fin.querySelector('#sum-2F-out-total').textContent= fmt(v('2F','outTotal'));
 
-  const todayAll=v('1F','todayTotal')+v('2F','todayTotal');
-  fin.querySelector('#today-total-all').textContent=fmt(todayAll);
+  const todayAll = v('1F','todayTotal') + v('2F','todayTotal');
+  fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
-  const prevAll=num(document.getElementById('prev-total-all').value);
-  fin.querySelector('#diff-all').textContent=fmt(todayAll-prevAll);
+  const prevAll = num(document.getElementById('prev-total-all').value);
+  const diffAll = todayAll - prevAll;
+  fin.querySelector('#diff-all').textContent = fmt(diffAll);
 
   /* ▼ 1F / 2F 各まとめに差分表示 ▼ */
   const setFloorDiff = (id, diffVal) => {
@@ -310,8 +319,8 @@ function recalcFinal(){
     }
     el.textContent = `差分: ${fmt(diffVal)} 円`;
   };
-  setFloorDiff('floor-diff-1F', v('1F','floorDiff'));
-  setFloorDiff('floor-diff-2F', v('2F','floorDiff'));
+  setFloorDiff('floor-diff-1F', v('1F','ioDiff'));
+  setFloorDiff('floor-diff-2F', v('2F','ioDiff'));
 
   /* ▼ 最終タブの出納帳メッセージ ▼ */
   let ledgerFin = document.getElementById('ledger-final');
@@ -322,6 +331,12 @@ function recalcFinal(){
     f.querySelector('#diff-all').parentElement.after(ledgerFin);
   }
   ledgerFin.textContent = `最終の出納帳に${fmt(todayAll)}円を記入してください。`;
+  if (diffAll === 0) {
+    ledgerFin.textContent =
+      `最終の出納帳に${fmt(todayAll)}円を記入してください。`;
+  } else {
+    ledgerFin.textContent = '';
+  }
 }
 
 // 初期
