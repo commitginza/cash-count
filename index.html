@@ -274,7 +274,7 @@ function recalcSec(sec){
   ledger.textContent = diff === 0 ? `出納帳に${fmt(expect)}円を記入してください。` : '';
 
   Object.assign(sec.dataset,{inTotal:inTot,outTotal:outTot,
-    inCount:cnt(selIn),outCount:cnt(selOut),todayTotal:today, expectedTotal: expected, floorDiff: todayTotal - expected});
+    inCount:cnt(selIn),outCount:cnt(selOut),todayTotal:today, expectedTotal: expect, floorDiff: today - expect});
 }
 
 function recalcFinal(){
