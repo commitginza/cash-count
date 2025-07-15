@@ -290,7 +290,7 @@ function recalcSec(sec){
   sec.querySelector('.expected-total').textContent=fmt(expect);
   const diff=expect-today;
   sec.querySelector('.diff').textContent=fmt(diff);
-  sec.querySelector('.status-label').textContent= diff===30_000_000?'問題なし':'';
+  sec.querySelector('.status-label').textContent= diff===60_000_000?'問題なし':'';
   /* ▼ 差分が 0 のとき “出納帳” メッセージを表示 ▼ */
   let ledger = sec.querySelector('.ledger-msg');
   if (!ledger) {
