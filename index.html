@@ -124,10 +124,10 @@
     </section>
   </template>
 
+<!-- ここまでのHTMLはそのままでOK（テンプレ群は <script> の“前”に置いてください） -->
+
 <script>
-/*************************
- * 定数 & ユーティリティ
- *************************/
+/* ========= 定数/ユーティリティ ========= */
 const COINS = [
   { label: '500円', value: 500 },
   { label: '100円', value: 100 },
@@ -139,27 +139,35 @@ const COINS = [
 const fmt = (n)=> Number(n||0).toLocaleString();
 const num = (v)=> { const s = String(v??'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
 
-/*************************
- * タブ切替（closestで安全に）
- *************************/
-document.getElementById('tabs').addEventListener('click', e => {
-  const btn = e.target.closest('button.tab-btn'); // ★ 修正
-  if(!btn) return;
+/* ========= テンプレ取得（最初に固定） ========= */
+const tplFloor = document.getElementById('floor-template');
+const tplCoin  = document.getElementById('coin-row-template');
+const tplFinal = document.getElementById('final-template');
+const container = document.getElementById('tab-contents');
+
+if (!tplFloor || !tplCoin || !tplFinal || !container) {
+  console.error('テンプレートまたはコンテナが見つかりません。');
+}
+
+/* ========= タブ切替 ========= */
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button.tab-btn');
+  if (!btn) return;
   const tgt = btn.dataset.tab;
   document.querySelectorAll('.tab-btn').forEach(b=>{
-    const on = b.dataset.tab===tgt;
-    b.classList.toggle('bg-blue-600',on);
-    b.classList.toggle('text-white', on);
-    b.classList.toggle('bg-gray-300',!on);
+    const on = b.dataset.tab === tgt;
+    b.classList.toggle('bg-blue-600', on);
+    b.classList.toggle('text-white',  on);
+    b.classList.toggle('bg-gray-300', !on);
     b.classList.toggle('text-gray-800',!on);
   });
-  document.querySelectorAll('[data-tab-content]')
-    .forEach(sec=>sec.classList.toggle('hidden', sec.id!==tgt));
+  // ここで data-tab-content を持つセクションを確実に切替
+  document.querySelectorAll('[data-tab-content]').forEach(sec=>{
+    sec.classList.toggle('hidden', sec.id !== tgt);
+  });
 });
 
-/*************************
- * 行追加ヘルパー
- *************************/
+/* ========= 行追加ヘルパー ========= */
 function addRow(tbl, cls){
   const tr = document.createElement('tr');
   const td = document.createElement('td');
@@ -169,19 +177,20 @@ function addRow(tbl, cls){
   td.appendChild(inp); tr.appendChild(td); tbl.appendChild(tr);
 }
 
-/*************************
- * 1F / 2F セクション生成
- *************************/
-const sections = {};
-['1F','2F'].forEach(floor=>{
-  const base = document.getElementById('floor-template').content.cloneNode(true);
-  const sec  = base.querySelector('section');
+/* ========= 状態置き場 ========= */
+const sections = {}; // {'1F': HTMLElement, '2F': HTMLElement}
+
+/* ========= フロア生成 ========= */
+function buildFloor(floor){
+  // テンプレから section をクローン
+  const sec = tplFloor.content.querySelector('section').cloneNode(true);
   sec.id = `tab-${floor}`;
   sec.dataset.floor = floor;
-  sec.setAttribute('data-tab-content',''); // ★ 念のため明示付与
-  if(floor!=='1F') sec.classList.add('hidden');
+  sec.setAttribute('data-tab-content','');
+  if (floor !== '1F') sec.classList.add('hidden'); // 初期は1Fだけ表示
   sec.querySelector('h2').textContent = floor;
 
+  // 入/出 テーブル初期行
   const inT = sec.querySelector('[data-type="in-table"]');
   const ouT = sec.querySelector('[data-type="out-table"]');
   for(let i=0;i<5;i++){
@@ -189,24 +198,26 @@ const sections = {};
     addRow(ouT,`floor-${floor}-out`);
   }
 
+  // 小銭
   const coinGrid = sec.querySelector('.coin-grid');
-  const coinTpl  = document.getElementById('coin-row-template');
   COINS.forEach(({label,value})=>{
-    const c=coinTpl.content.cloneNode(true);
-    c.querySelector('label').textContent=label;
-    c.querySelector('input').dataset.value=value;
-    coinGrid.appendChild(c);
+    const frag = tplCoin.content.firstElementChild.cloneNode(true); // <div>…
+    frag.querySelector('label').textContent = label;
+    frag.querySelector('input').dataset.value = value;
+    coinGrid.appendChild(frag);
   });
 
+  // 行追加ボタン
   sec.querySelectorAll('.add-row').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      const kind = btn.dataset.type;
+      const kind = btn.dataset.type; // 'in' | 'out'
       const tbl  = sec.querySelector(`[data-type="${kind}-table"]`);
       addRow(tbl,`floor-${floor}-${kind}`);
       recalcSec(sec); recalcFinal();
     });
   });
 
+  // 入力フォーマット
   sec.addEventListener('input', ()=>{recalcSec(sec); recalcFinal();});
   sec.addEventListener('blur', e=>{
     if(e.target.classList.contains('floor-input')){
@@ -219,28 +230,36 @@ const sections = {};
       e.target.value = String(num(e.target.value));
   }, true);
 
-  document.getElementById('tab-contents').appendChild(sec);
-  recalcSec(sec);
-  sections[floor]=sec;
+  return sec;
+}
+
+/* ========= セクションを“必ず”作る（片方が失敗しても続行） ========= */
+['1F','2F'].forEach(f=>{
+  try {
+    const sec = buildFloor(f);
+    container.appendChild(sec);
+    sections[f] = sec;
+    recalcSec(sec); // 初期計算
+  } catch(err){
+    console.error(`"${f}" の組み立てでエラー:`, err);
+  }
 });
 
-/*************************
- * 最終タブ生成
- *************************/
-{
-  const tpl  = document.getElementById('final-template').content.cloneNode(true);
-  const final= tpl.querySelector('section');
-  final.setAttribute('data-tab-content',''); // ★ 念のため明示付与
-  document.getElementById('tab-contents').appendChild(final);
+/* ========= 最終タブ生成（hidden除去） ========= */
+try {
+  const final = tplFinal.content.querySelector('section').cloneNode(true);
+  final.setAttribute('data-tab-content','');
+  final.classList.remove('hidden'); // ← 最初からTailwindのhiddenが付いてるので外す
+  container.appendChild(final);
 
   const prev=final.querySelector('#prev-total-all');
   prev.addEventListener('blur',()=>{prev.value=fmt(num(prev.value));recalcFinal();});
   prev.addEventListener('focus',()=>{prev.value=String(num(prev.value));});
+} catch(err){
+  console.error('最終タブの組み立てでエラー:', err);
 }
 
-/*************************
- * 判定差分 入力イベント
- *************************/
+/* ========= 判定差分（許容誤差なし） ========= */
 const judgeEl = document.getElementById('judge-diff');
 const getJudge = () => num(judgeEl?.value ?? 0);
 if (judgeEl) {
@@ -250,9 +269,7 @@ if (judgeEl) {
   judgeEl.addEventListener('input', ()=>{ Object.values(sections).forEach(recalcSec); recalcFinal(); });
 }
 
-/*************************
- * 計算
- *************************/
+/* ========= 計算 ========= */
 function recalcSec(sec){
   const f=sec.dataset.floor, selIn=`.floor-${f}-in`, selOut=`.floor-${f}-out`;
   const sum = sel=>[...sec.querySelectorAll(sel)].reduce((a,e)=>a+num(e.value),0);
@@ -282,7 +299,7 @@ function recalcSec(sec){
   const diff=expect-today;
   sec.querySelector('.diff').textContent=fmt(diff);
 
-  // 入力値と一致でOK（許容誤差なし）
+  // 判定差分（完全一致でOK）
   const judge = getJudge();
   sec.querySelector('.status-label').textContent = (diff === judge) ? '問題なし' : '';
 
@@ -299,7 +316,7 @@ function recalcSec(sec){
 
 function recalcFinal(){
   const fin=document.getElementById('tab-final'); if(!fin) return;
-  const v=(fl,k)=>parseInt(sections[fl]?.dataset?.[k] ?? 0,10); // ★ ガード付き
+  const v=(fl,k)=>parseInt(sections[fl]?.dataset?.[k] ?? 0,10);
 
   fin.querySelector('#sum-1F-in-count').textContent = v('1F','inCount');
   fin.querySelector('#sum-1F-in-total').textContent = fmt(v('1F','inTotal'));
@@ -315,11 +332,11 @@ function recalcFinal(){
   fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
   const prevAll = num(document.getElementById('prev-total-all').value);
-  const diffAll = todayAll - prevAll;
+  const diffAll = todayAll - prevAll; // 調整額を足す仕様にするなら + adj をここに
   fin.querySelector('#diff-all').textContent = fmt(diffAll);
 }
 
-// 初期
+/* 初期一発 */
 recalcFinal();
 </script>
 </body>
