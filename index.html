@@ -138,6 +138,12 @@
         <label class="block text-sm font-medium mb-1">前日の総合計 (円)</label>
         <input type="text" inputmode="numeric" id="prev-total-all" class="w-full border rounded p-2" value="0" />
       </div>
+      <!-- ★ 変更: 調整額入力を追加（例：金庫6000万や銀行引出/預け入れなど） -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">調整額 (円) ※例: 60000000</label>
+        <input type="text" inputmode="numeric" id="adjustment-final" class="w-full border rounded p-2" value="0" />
+        <p class="text-xs text-gray-500 mt-1">最終差分 = 今日の現金総合計 − 前日の総合計 − 調整額</p>
+      </div>
       <p>今日の現金総合計: <span id="today-total-all" class="font-semibold">0</span> 円</p>
       <p class="text-lg mt-2">差分: <span id="diff-all" class="font-bold">0</span> 円</p>
     </section>
@@ -223,7 +229,7 @@ const sections={};
   sec.querySelectorAll('.add-row').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const kind = btn.dataset.type; // in | out
-      const tbl  = sec.querySelector(`[data-type=\"${kind}-table\"]`);
+      const tbl  = sec.querySelector(`[data-type="${kind}-table"]`);
       addRow(tbl,`floor-${floor}-${kind}`);
       recalcSec(sec); recalcFinal();
     });
@@ -257,6 +263,11 @@ const sections={};
   const prev=final.querySelector('#prev-total-all');
   prev.addEventListener('blur',()=>{prev.value=fmt(num(prev.value));recalcFinal();});
   prev.addEventListener('focus',()=>{prev.value=String(num(prev.value));});
+
+  // ★ 変更: 調整額のフォーマット&再計算
+  const adj=final.querySelector('#adjustment-final');
+  adj.addEventListener('blur',()=>{adj.value=fmt(num(adj.value));recalcFinal();});
+  adj.addEventListener('focus',()=>{adj.value=String(num(adj.value));});
 }
 
 /*************************
@@ -290,7 +301,7 @@ function recalcSec(sec){
   sec.querySelector('.expected-total').textContent=fmt(expect);
   const diff=expect-today;
   sec.querySelector('.diff').textContent=fmt(diff);
-  sec.querySelector('.status-label').textContent= diff===60_000_000?'問題なし':'';
+  sec.querySelector('.status-label').textContent= '';
   /* ▼ 差分が 0 のとき “出納帳” メッセージを表示 ▼ */
   let ledger = sec.querySelector('.ledger-msg');
   if (!ledger) {
@@ -307,7 +318,7 @@ function recalcSec(sec){
     outCount:cnt(selOut),
     todayTotal:today,
     expectedTotal: expect,
-    ioDiff       /* ← 入−出 差分を dataset に保存 */
+    ioDiff       /* 入−出 差分を dataset に保存 */
   });
 }
 
@@ -329,24 +340,23 @@ function recalcFinal(){
   fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
   const prevAll = num(document.getElementById('prev-total-all').value);
-  const diffAll = todayAll - prevAll;
+  const adj = num(document.getElementById('adjustment-final').value); // ★ 変更: 調整額を考慮
+  const diffAll = todayAll - prevAll - adj;                           // ★ 変更: 最終差分 = 今日の現金総合計 − 前日の総合計 − 調整額
   fin.querySelector('#diff-all').textContent = fmt(diffAll);
 
   /* ▼ 1F / 2F 各まとめに差分表示 ▼ */
-  const setFloorDiff = (id, diffVal) => {
+  const setFloorDiff = (id, diffVal, anchorSelector) => {
     let el = document.getElementById(id);
     if (!el) {
       el = document.createElement('p');
       el.id = id;
-      const anchor = id.includes('1F')
-        ? f.querySelector('#sum-1F-out-total').parentElement
-        : f.querySelector('#sum-2F-out-total').parentElement;
+      const anchor = fin.querySelector(anchorSelector).parentElement;
       anchor.appendChild(el);
     }
-    el.textContent = `差分: ${fmt(diffVal)} 円`;
+    el.textContent = `差分(入−出): ${fmt(diffVal)} 円`;
   };
-  setFloorDiff('floor-diff-1F', v('1F','ioDiff'));
-  setFloorDiff('floor-diff-2F', v('2F','ioDiff'));
+  setFloorDiff('floor-diff-1F', v('1F','ioDiff'), '#sum-1F-out-total');
+  setFloorDiff('floor-diff-2F', v('2F','ioDiff'), '#sum-2F-out-total');
 
   /* ▼ 最終タブの出納帳メッセージ ▼ */
   let ledgerFin = document.getElementById('ledger-final');
@@ -354,15 +364,11 @@ function recalcFinal(){
     ledgerFin = document.createElement('p');
     ledgerFin.id = 'ledger-final';
     ledgerFin.className = 'mt-1 text-blue-600';
-    f.querySelector('#diff-all').parentElement.after(ledgerFin);
+    fin.querySelector('#diff-all').parentElement.after(ledgerFin);
   }
-  ledgerFin.textContent = `最終の出納帳に${fmt(todayAll)}円を記入してください。`;
-  if (diffAll === 0) {
-    ledgerFin.textContent =
-      `最終の出納帳に${fmt(todayAll)}円を記入してください。`;
-  } else {
-    ledgerFin.textContent = '';
-  }
+  ledgerFin.textContent = diffAll === 0
+    ? `最終の出納帳に${fmt(todayAll)}円を記入してください。`
+    : '';
 }
 
 // 初期
