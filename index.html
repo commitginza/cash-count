@@ -142,7 +142,7 @@
       <div class="mb-4">
         <label class="block text-sm font-medium mb-1">調整額 (円) ※例: 60000000</label>
         <input type="text" inputmode="numeric" id="adjustment-final" class="w-full border rounded p-2" value="0" />
-        <p class="text-xs text-gray-500 mt-1">最終差分 = 今日の現金総合計 − 前日の総合計 − 調整額</p>
+        <p class="text-xs text-gray-500 mt-1">最終差分 = 今日の現金総合計 − 前日の総合計 + 調整額</p>
       </div>
       <p>今日の現金総合計: <span id="today-total-all" class="font-semibold">0</span> 円</p>
       <p class="text-lg mt-2">差分: <span id="diff-all" class="font-bold">0</span> 円</p>
@@ -341,7 +341,7 @@ function recalcFinal(){
 
   const prevAll = num(document.getElementById('prev-total-all').value);
   const adj = num(document.getElementById('adjustment-final').value); // ★ 変更: 調整額を考慮
-  const diffAll = todayAll - prevAll - adj;                           // ★ 変更: 最終差分 = 今日の現金総合計 − 前日の総合計 − 調整額
+  const diffAll = todayAll - prevAll + adj;                           // ★ 変更: 最終差分 = 今日の現金総合計 − 前日の総合計 + 調整額
   fin.querySelector('#diff-all').textContent = fmt(diffAll);
 
   /* ▼ 1F / 2F 各まとめに差分表示 ▼ */
