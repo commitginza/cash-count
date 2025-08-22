@@ -301,8 +301,18 @@ function recalcSec(sec){
 
   // 判定差分（完全一致でOK）
   const judge = getJudge();
-  sec.querySelector('.status-label').textContent = (diff === judge) ? '問題なし' : '';
-
+  const ok = (diff === 0 || diff === judge);
+  sec.querySelector('.status-label').textContent = ok ? '問題なし' : '';
+  // 出納帳メッセージ（存在しなければ作成）
+  let ledger = sec.querySelector('.ledger-msg');
+  if (!ledger) {
+    ledger = document.createElement('p');
+    ledger.className = 'ledger-msg text-blue-600 mt-1';
+    sec.querySelector('.status-label').after(ledger);
+  }
+  // diffが0 または 判定差分と一致 → 表示 / それ以外 → 非表示
+  ledger.textContent = ok ? `出納帳に${fmt(expect)}円と記入してください。` : '';
+  
   Object.assign(sec.dataset,{
     inTotal:inTot,
     outTotal:outTot,
@@ -317,7 +327,7 @@ function recalcSec(sec){
 function recalcFinal(){
   const fin=document.getElementById('tab-final'); if(!fin) return;
   const v=(fl,k)=>parseInt(sections[fl]?.dataset?.[k] ?? 0,10);
-
+  
   fin.querySelector('#sum-1F-in-count').textContent = v('1F','inCount');
   fin.querySelector('#sum-1F-in-total').textContent = fmt(v('1F','inTotal'));
   fin.querySelector('#sum-1F-out-count').textContent= v('1F','outCount');
@@ -332,8 +342,21 @@ function recalcFinal(){
   fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
   const prevAll = num(document.getElementById('prev-total-all').value);
-  const diffAll = todayAll - prevAll; // 調整額を足す仕様にするなら + adj をここに
+  const diffAll = todayAll - prevAll + adj; // 調整額を足す仕様にするなら + adj をここに
   fin.querySelector('#diff-all').textContent = fmt(diffAll);
+
+  // ▼ 最終タブの出納帳メッセージ
+  let ledgerFin = document.getElementById('ledger-final');
+  if (!ledgerFin) {
+    ledgerFin = document.createElement('p');
+    ledgerFin.id = 'ledger-final';
+    ledgerFin.className = 'mt-1 text-blue-600';
+    // diff-all を含む<p>の直後に挿入
+    fin.querySelector('#diff-all').parentElement.after(ledgerFin);
+  }
+  const judge = getJudge();
+  const okFin = (diffAll === 0 || diffAll === judge);
+  ledgerFin.textContent = okFin ? `出納帳に${fmt(todayAll)}円と記入してください。` : '';
 }
 
 /* 初期一発 */
