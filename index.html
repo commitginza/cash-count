@@ -10,37 +10,33 @@
 <body class="bg-gray-100 p-6">
   <h1 class="text-2xl font-bold mb-6">現金管理ツール</h1>
 
-  <!-- ★ 変更: 判定差分の入力UI（許容誤差は廃止） -->
+  <!-- 判定差分（許容誤差なし） -->
   <section class="bg-white shadow rounded-xl p-4 mb-4">
     <label class="block text-sm font-medium text-gray-700 mb-1">判定差分 (円)</label>
     <input type="text" inputmode="numeric" id="judge-diff" class="w-full border rounded p-2" value="30000000" />
-    <p class="text-xs text-gray-500 mt-1">「差分」がこの値と一致したら「問題なし」。</p>
+    <p class="text-xs text-gray-500 mt-1">各フロアの「差分」がこの値と一致したら「問題なし」。</p>
   </section>
 
-  <!-- ===== タブナビゲーション ===== -->
+  <!-- タブ -->
   <div id="tabs" class="flex space-x-2 mb-4">
     <button data-tab="tab-1F" class="tab-btn bg-blue-600 text-white px-4 py-2 rounded">1F</button>
     <button data-tab="tab-2F" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded">2F</button>
     <button data-tab="tab-final" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded ml-auto">最終</button>
   </div>
 
-  <!-- ===== コンテンツラッパー ===== -->
   <div id="tab-contents"></div>
 
-  <!-- ===== Floor テンプレート ===== -->
+  <!-- Floor テンプレ -->
   <template id="floor-template">
     <section class="bg-white shadow rounded-xl p-6 mb-10" data-floor="" data-tab-content>
-      <h2 class="text-xl font-semibold mb-4"><!-- floor name --></h2>
+      <h2 class="text-xl font-semibold mb-4"></h2>
 
-      <!-- 前日の現金 -->
       <div class="mb-6">
         <label class="block text-sm font-medium text-gray-700 mb-1">前日の現金 (円)</label>
         <input type="text" inputmode="numeric" class="prev-cash floor-input w-full border rounded p-2" value="0" />
       </div>
 
-      <!-- 入・出 横並び -->
       <div class="flex flex-col md:flex-row md:space-x-6">
-        <!-- 入 -->
         <div class="mb-6 flex-1">
           <h3 class="text-lg font-medium mb-2">入 (円)</h3>
           <table class="min-w-full mb-2" data-type="in-table"></table>
@@ -48,7 +44,6 @@
           <p class="mt-2">件数: <span class="in-count font-semibold">0</span>　合計: <span class="in-total font-semibold">0</span> 円</p>
         </div>
 
-        <!-- 出 -->
         <div class="mb-6 flex-1">
           <h3 class="text-lg font-medium mb-2">出 (円)</h3>
           <table class="min-w-full mb-2" data-type="out-table"></table>
@@ -57,7 +52,6 @@
         </div>
       </div>
 
-      <!-- 当日現金 -->
       <div class="mb-6">
         <h3 class="text-lg font-medium mb-2">当日現金</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -76,34 +70,15 @@
         <p class="mt-2">小銭 合計: <span class="coin-total font-semibold">0</span> 円</p>
       </div>
 
-      <!-- 差分テーブル -->
       <div class="border-t pt-4">
         <table class="w-full text-sm">
           <tbody>
-            <tr>
-              <th class="text-left pr-4">前日現金</th>
-              <td><span class="prev-val font-semibold">0</span> 円</td>
-            </tr>
-            <tr>
-              <th class="text-left pr-4">入 合計</th>
-              <td class="text-green-600">+<span class="in-total font-semibold">0</span> 円</td>
-            </tr>
-            <tr>
-              <th class="text-left pr-4">出 合計</th>
-              <td class="text-red-600">-<span class="out-total font-semibold">0</span> 円</td>
-            </tr>
-            <tr>
-              <th class="text-left pr-4">当日現金 合計</th>
-              <td><span class="today-total font-semibold">0</span> 円</td>
-            </tr>
-            <tr>
-              <th class="text-left pr-4">期待値</th>
-              <td><span class="expected-total font-semibold">0</span> 円</td>
-            </tr>
-            <tr>
-              <th class="text-left pr-4">差分</th>
-              <td><span class="diff font-bold">0</span> 円</td>
-            </tr>
+            <tr><th class="text-left pr-4">前日現金</th><td><span class="prev-val font-semibold">0</span> 円</td></tr>
+            <tr><th class="text-left pr-4">入 合計</th><td class="text-green-600">+<span class="in-total font-semibold">0</span> 円</td></tr>
+            <tr><th class="text-left pr-4">出 合計</th><td class="text-red-600">-<span class="out-total font-semibold">0</span> 円</td></tr>
+            <tr><th class="text-left pr-4">当日現金 合計</th><td><span class="today-total font-semibold">0</span> 円</td></tr>
+            <tr><th class="text-left pr-4">期待値</th><td><span class="expected-total font-semibold">0</span> 円</td></tr>
+            <tr><th class="text-left pr-4">差分</th><td><span class="diff font-bold">0</span> 円</td></tr>
           </tbody>
         </table>
         <p class="status-label text-green-600 font-semibold mt-1"></p>
@@ -111,15 +86,15 @@
     </section>
   </template>
 
-  <!-- ===== コイン入力用テンプレート ===== -->
+  <!-- コイン入力テンプレ -->
   <template id="coin-row-template">
     <div>
-      <label class="block text-sm mb-1"><!-- coin label --></label>
+      <label class="block text-sm mb-1"></label>
       <input type="text" inputmode="numeric" class="coin-count floor-input w-full border rounded p-2" data-value="" value="0" />
     </div>
   </template>
 
-  <!-- ===== Final テンプレート ===== -->
+  <!-- Final テンプレ -->
   <template id="final-template">
     <section class="bg-white shadow rounded-xl p-6 mb-10 hidden" id="tab-final" data-tab-content>
       <h2 class="text-xl font-semibold mb-4">最終集計</h2>
@@ -149,7 +124,6 @@
     </section>
   </template>
 
-  <!-- ===== JavaScript ===== -->
 <script>
 /*************************
  * 定数 & ユーティリティ
@@ -162,16 +136,16 @@ const COINS = [
   { label: '5円',   value: 5  },
   { label: '1円',   value: 1  }
 ];
-
-const fmt  = (n)  => n.toLocaleString();
-const num  = (v)  => { const s = String(v||'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
+const fmt = (n)=> Number(n||0).toLocaleString();
+const num = (v)=> { const s = String(v??'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
 
 /*************************
- * タブ切替
+ * タブ切替（closestで安全に）
  *************************/
 document.getElementById('tabs').addEventListener('click', e => {
-  if(!e.target.classList.contains('tab-btn')) return;
-  const tgt = e.target.dataset.tab;
+  const btn = e.target.closest('button.tab-btn'); // ★ 修正
+  if(!btn) return;
+  const tgt = btn.dataset.tab;
   document.querySelectorAll('.tab-btn').forEach(b=>{
     const on = b.dataset.tab===tgt;
     b.classList.toggle('bg-blue-600',on);
@@ -180,7 +154,7 @@ document.getElementById('tabs').addEventListener('click', e => {
     b.classList.toggle('text-gray-800',!on);
   });
   document.querySelectorAll('[data-tab-content]')
-    .forEach(sec=>sec.classList.toggle('hidden',sec.id!==tgt));
+    .forEach(sec=>sec.classList.toggle('hidden', sec.id!==tgt));
 });
 
 /*************************
@@ -198,16 +172,16 @@ function addRow(tbl, cls){
 /*************************
  * 1F / 2F セクション生成
  *************************/
-const sections={};
+const sections = {};
 ['1F','2F'].forEach(floor=>{
   const base = document.getElementById('floor-template').content.cloneNode(true);
   const sec  = base.querySelector('section');
-  sec.id=`tab-${floor}`; sec.dataset.floor=floor;
-  // data-tab-content はテンプレートに付与済
-  if(floor!=='1F') sec.classList.add('hidden'); // 初期は1Fだけ表示
-  sec.querySelector('h2').textContent=floor;
+  sec.id = `tab-${floor}`;
+  sec.dataset.floor = floor;
+  sec.setAttribute('data-tab-content',''); // ★ 念のため明示付与
+  if(floor!=='1F') sec.classList.add('hidden');
+  sec.querySelector('h2').textContent = floor;
 
-  // 入/出テーブル初期5行
   const inT = sec.querySelector('[data-type="in-table"]');
   const ouT = sec.querySelector('[data-type="out-table"]');
   for(let i=0;i<5;i++){
@@ -215,7 +189,6 @@ const sections={};
     addRow(ouT,`floor-${floor}-out`);
   }
 
-  // 小銭行
   const coinGrid = sec.querySelector('.coin-grid');
   const coinTpl  = document.getElementById('coin-row-template');
   COINS.forEach(({label,value})=>{
@@ -225,39 +198,39 @@ const sections={};
     coinGrid.appendChild(c);
   });
 
-  // 行追加ボタン
   sec.querySelectorAll('.add-row').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      const kind = btn.dataset.type; // in | out
+      const kind = btn.dataset.type;
       const tbl  = sec.querySelector(`[data-type="${kind}-table"]`);
       addRow(tbl,`floor-${floor}-${kind}`);
       recalcSec(sec); recalcFinal();
     });
   });
 
-  // 入力/blur/focus
   sec.addEventListener('input', ()=>{recalcSec(sec); recalcFinal();});
   sec.addEventListener('blur', e=>{
     if(e.target.classList.contains('floor-input')){
       e.target.value = fmt(num(e.target.value));
       recalcSec(sec); recalcFinal();
     }
-  },true);
+  }, true);
   sec.addEventListener('focus', e=>{
     if(e.target.classList.contains('floor-input'))
       e.target.value = String(num(e.target.value));
-  },true);
+  }, true);
 
   document.getElementById('tab-contents').appendChild(sec);
-  recalcSec(sec); sections[floor]=sec;
+  recalcSec(sec);
+  sections[floor]=sec;
 });
 
 /*************************
  * 最終タブ生成
  *************************/
 {
-  const tpl=document.getElementById('final-template').content.cloneNode(true);
-  const final=tpl.querySelector('section');
+  const tpl  = document.getElementById('final-template').content.cloneNode(true);
+  const final= tpl.querySelector('section');
+  final.setAttribute('data-tab-content',''); // ★ 念のため明示付与
   document.getElementById('tab-contents').appendChild(final);
 
   const prev=final.querySelector('#prev-total-all');
@@ -266,12 +239,13 @@ const sections={};
 }
 
 /*************************
- * ★ 変更: 判定差分 入力イベント
+ * 判定差分 入力イベント
  *************************/
 const judgeEl = document.getElementById('judge-diff');
-const getJudge = () => num(judgeEl?.value ?? 60000000);
+const getJudge = () => num(judgeEl?.value ?? 0);
 if (judgeEl) {
-  judgeEl.addEventListener('blur', ()=>{ judgeEl.value = fmt(num(judgeEl.value)); Object.values(sections).forEach(recalcSec); recalcFinal(); });
+  const re = ()=>{ judgeEl.value = fmt(num(judgeEl.value)); Object.values(sections).forEach(recalcSec); recalcFinal(); };
+  judgeEl.addEventListener('blur', re);
   judgeEl.addEventListener('focus', ()=>{ judgeEl.value = String(num(judgeEl.value)); });
   judgeEl.addEventListener('input', ()=>{ Object.values(sections).forEach(recalcSec); recalcFinal(); });
 }
@@ -308,18 +282,9 @@ function recalcSec(sec){
   const diff=expect-today;
   sec.querySelector('.diff').textContent=fmt(diff);
 
-  // ★ 変更: 固定60,000,000→入力値と一致なら「問題なし」
+  // 入力値と一致でOK（許容誤差なし）
   const judge = getJudge();
   sec.querySelector('.status-label').textContent = (diff === judge) ? '問題なし' : '';
-
-  /* 差分が 0 のとき “出納帳” メッセージを表示（従来通り） */
-  let ledger = sec.querySelector('.ledger-msg');
-  if (!ledger) {
-    ledger = document.createElement('p');
-    ledger.className = 'ledger-msg text-blue-600 mt-1';
-    sec.querySelector('.status-label').after(ledger);
-  }
-  ledger.textContent = diff === 0 ? `出納帳に${fmt(expect)}円を記入してください。` : '';
 
   Object.assign(sec.dataset,{
     inTotal:inTot,
@@ -334,7 +299,7 @@ function recalcSec(sec){
 
 function recalcFinal(){
   const fin=document.getElementById('tab-final'); if(!fin) return;
-  const v=(fl,k)=>parseInt(sections[fl].dataset[k]||'0',10);
+  const v=(fl,k)=>parseInt(sections[fl]?.dataset?.[k] ?? 0,10); // ★ ガード付き
 
   fin.querySelector('#sum-1F-in-count').textContent = v('1F','inCount');
   fin.querySelector('#sum-1F-in-total').textContent = fmt(v('1F','inTotal'));
@@ -352,14 +317,10 @@ function recalcFinal(){
   const prevAll = num(document.getElementById('prev-total-all').value);
   const diffAll = todayAll - prevAll;
   fin.querySelector('#diff-all').textContent = fmt(diffAll);
-
-  // ★ 修正: 以前の 'f' 参照を排除（未定義エラー防止）
-  //   必要ならここで最終タブ向けのメッセージ等を追記してください。
 }
 
 // 初期
 recalcFinal();
 </script>
-
 </body>
 </html>
