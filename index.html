@@ -5,11 +5,27 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>現金管理ツール</title>
-  <!-- TailwindCSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6">
   <h1 class="text-2xl font-bold mb-6">現金管理ツール</h1>
+
+  <!-- ★ 変更: 判定基準の設定カードを追加 -->
+  <section class="bg-white shadow rounded-xl p-4 mb-4">
+    <h2 class="text-lg font-semibold mb-2">判定設定</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">判定差分 (円)</label>
+        <input type="text" inputmode="numeric" id="judge-diff" class="w-full border rounded p-2" value="60000000" />
+        <p class="text-xs text-gray-500 mt-1">各フロアの差分がこの値に近ければ「問題なし」</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">許容誤差 (円)</label>
+        <input type="text" inputmode="numeric" id="judge-tol" class="w-full border rounded p-2" value="0" />
+        <p class="text-xs text-gray-500 mt-1">±この範囲内ならOKにする</p>
+      </div>
+    </div>
+  </section>
 
   <!-- ===== タブナビゲーション ===== -->
   <div id="tabs" class="flex space-x-2 mb-4">
@@ -34,7 +50,6 @@
 
       <!-- 入・出 横並び -->
       <div class="flex flex-col md:flex-row md:space-x-6">
-        <!-- 入 -->
         <div class="mb-6 flex-1">
           <h3 class="text-lg font-medium mb-2">入 (円)</h3>
           <table class="min-w-full mb-2" data-type="in-table"></table>
@@ -42,7 +57,6 @@
           <p class="mt-2">件数: <span class="in-count font-semibold">0</span>　合計: <span class="in-total font-semibold">0</span> 円</p>
         </div>
 
-        <!-- 出 -->
         <div class="mb-6 flex-1">
           <h3 class="text-lg font-medium mb-2">出 (円)</h3>
           <table class="min-w-full mb-2" data-type="out-table"></table>
@@ -105,15 +119,15 @@
     </section>
   </template>
 
-  <!-- ===== コイン入力用テンプレート ===== -->
+  <!-- コイン入力テンプレ -->
   <template id="coin-row-template">
     <div>
-      <label class="block text-sm mb-1"><!-- coin label --></label>
+      <label class="block text-sm mb-1"></label>
       <input type="text" inputmode="numeric" class="coin-count floor-input w-full border rounded p-2" data-value="" value="0" />
     </div>
   </template>
 
-  <!-- ===== Final テンプレート ===== -->
+  <!-- Final テンプレ -->
   <template id="final-template">
     <section class="bg-white shadow rounded-xl p-6 mb-10 hidden" id="tab-final" data-tab-content>
       <h2 class="text-xl font-semibold mb-4">最終集計</h2>
@@ -138,18 +152,11 @@
         <label class="block text-sm font-medium mb-1">前日の総合計 (円)</label>
         <input type="text" inputmode="numeric" id="prev-total-all" class="w-full border rounded p-2" value="0" />
       </div>
-      <!-- ★ 変更: 調整額入力を追加（例：金庫6000万や銀行引出/預け入れなど） -->
-      <div class="mb-4">
-        <label class="block text-sm font-medium mb-1">調整額 (円) ※例: 60000000</label>
-        <input type="text" inputmode="numeric" id="adjustment-final" class="w-full border rounded p-2" value="0" />
-        <p class="text-xs text-gray-500 mt-1">最終差分 = 今日の現金総合計 − 前日の総合計 + 調整額</p>
-      </div>
       <p>今日の現金総合計: <span id="today-total-all" class="font-semibold">0</span> 円</p>
       <p class="text-lg mt-2">差分: <span id="diff-all" class="font-bold">0</span> 円</p>
     </section>
   </template>
 
-  <!-- ===== JavaScript ===== -->
 <script>
 /*************************
  * 定数 & ユーティリティ
@@ -162,7 +169,6 @@ const COINS = [
   { label: '5円',   value: 5  },
   { label: '1円',   value: 1  }
 ];
-
 const fmt  = (n)  => n.toLocaleString();
 const num  = (v)  => { const s = String(v||'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
 
@@ -207,7 +213,6 @@ const sections={};
   if(floor!=='1F') sec.classList.add('hidden');
   sec.querySelector('h2').textContent=floor;
 
-  // 入/出テーブル初期5行
   const inT = sec.querySelector('[data-type="in-table"]');
   const ouT = sec.querySelector('[data-type="out-table"]');
   for(let i=0;i<5;i++){
@@ -215,7 +220,6 @@ const sections={};
     addRow(ouT,`floor-${floor}-out`);
   }
 
-  // 小銭行
   const coinGrid = sec.querySelector('.coin-grid');
   const coinTpl  = document.getElementById('coin-row-template');
   COINS.forEach(({label,value})=>{
@@ -225,17 +229,15 @@ const sections={};
     coinGrid.appendChild(c);
   });
 
-  // 行追加ボタン
   sec.querySelectorAll('.add-row').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      const kind = btn.dataset.type; // in | out
+      const kind = btn.dataset.type;
       const tbl  = sec.querySelector(`[data-type="${kind}-table"]`);
       addRow(tbl,`floor-${floor}-${kind}`);
       recalcSec(sec); recalcFinal();
     });
   });
 
-  // 入力/blur/focus
   sec.addEventListener('input', ()=>{recalcSec(sec); recalcFinal();});
   sec.addEventListener('blur', e=>{
     if(e.target.classList.contains('floor-input')){
@@ -263,12 +265,18 @@ const sections={};
   const prev=final.querySelector('#prev-total-all');
   prev.addEventListener('blur',()=>{prev.value=fmt(num(prev.value));recalcFinal();});
   prev.addEventListener('focus',()=>{prev.value=String(num(prev.value));});
-
-  // ★ 変更: 調整額のフォーマット&再計算
-  const adj=final.querySelector('#adjustment-final');
-  adj.addEventListener('blur',()=>{adj.value=fmt(num(adj.value));recalcFinal();});
-  adj.addEventListener('focus',()=>{adj.value=String(num(adj.value));});
 }
+
+/*************************
+ * ★ 変更: 判定設定の入力イベント
+ *************************/
+const judgeDiffEl = document.getElementById('judge-diff');
+const judgeTolEl  = document.getElementById('judge-tol');
+[judgeDiffEl, judgeTolEl].forEach(el=>{
+  el.addEventListener('blur', ()=>{ el.value = fmt(num(el.value)); Object.values(sections).forEach(recalcSec); recalcFinal(); });
+  el.addEventListener('focus', ()=>{ el.value = String(num(el.value)); });
+  el.addEventListener('input', ()=>{ Object.values(sections).forEach(recalcSec); recalcFinal(); });
+});
 
 /*************************
  * 計算
@@ -301,8 +309,14 @@ function recalcSec(sec){
   sec.querySelector('.expected-total').textContent=fmt(expect);
   const diff=expect-today;
   sec.querySelector('.diff').textContent=fmt(diff);
-  sec.querySelector('.status-label').textContent= '';
-  /* ▼ 差分が 0 のとき “出納帳” メッセージを表示 ▼ */
+
+  // ★ 変更: 入力された判定差分・許容誤差で可変判定
+  const judge = num(judgeDiffEl.value);
+  const tol   = num(judgeTolEl.value);
+  const ok = Math.abs(diff - judge) <= tol;
+  sec.querySelector('.status-label').textContent= ok ? '問題なし' : '';
+
+  // 差分0のときの案内（従来通り）
   let ledger = sec.querySelector('.ledger-msg');
   if (!ledger) {
     ledger = document.createElement('p');
@@ -318,7 +332,7 @@ function recalcSec(sec){
     outCount:cnt(selOut),
     todayTotal:today,
     expectedTotal: expect,
-    ioDiff       /* 入−出 差分を dataset に保存 */
+    ioDiff
   });
 }
 
@@ -340,25 +354,23 @@ function recalcFinal(){
   fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
   const prevAll = num(document.getElementById('prev-total-all').value);
-  const adj = num(document.getElementById('adjustment-final').value); // ★ 変更: 調整額を考慮
-  const diffAll = todayAll - prevAll + adj;                           // ★ 変更: 最終差分 = 今日の現金総合計 − 前日の総合計 + 調整額
+  const diffAll = todayAll - prevAll;
   fin.querySelector('#diff-all').textContent = fmt(diffAll);
 
-  /* ▼ 1F / 2F 各まとめに差分表示 ▼ */
-  const setFloorDiff = (id, diffVal, anchorSelector) => {
+  // ★ バグ修正: 未定義 f → fin を使用
+  const setFloorDiff = (id, diffVal, anchorSel) => {
     let el = document.getElementById(id);
     if (!el) {
       el = document.createElement('p');
       el.id = id;
-      const anchor = fin.querySelector(anchorSelector).parentElement;
+      const anchor = fin.querySelector(anchorSel).parentElement;
       anchor.appendChild(el);
     }
-    el.textContent = `差分(入−出): ${fmt(diffVal)} 円`;
+    el.textContent = `差分: ${fmt(diffVal)} 円`;
   };
   setFloorDiff('floor-diff-1F', v('1F','ioDiff'), '#sum-1F-out-total');
   setFloorDiff('floor-diff-2F', v('2F','ioDiff'), '#sum-2F-out-total');
 
-  /* ▼ 最終タブの出納帳メッセージ ▼ */
   let ledgerFin = document.getElementById('ledger-final');
   if (!ledgerFin) {
     ledgerFin = document.createElement('p');
@@ -374,6 +386,5 @@ function recalcFinal(){
 // 初期
 recalcFinal();
 </script>
-
 </body>
 </html>
