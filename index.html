@@ -342,6 +342,7 @@ function recalcFinal(){
   fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
   const prevAll = num(document.getElementById('prev-total-all').value);
+  const adj = num(document.getElementById('judge-diff').value)
   const diffAll = todayAll - prevAll + adj; // 調整額を足す仕様にするなら + adj をここに
   fin.querySelector('#diff-all').textContent = fmt(diffAll);
 
