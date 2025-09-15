@@ -13,7 +13,7 @@
   <!-- 判定差分（許容誤差なし） -->
   <section class="bg-white shadow rounded-xl p-4 mb-4">
     <label class="block text-sm font-medium text-gray-700 mb-1">判定差分 (円)</label>
-    <input type="text" inputmode="numeric" id="judge-diff" class="w-full border rounded p-2" value="30000000" />
+    <input type="text" inputmode="numeric" id="judge-diff" class="w-full border rounded p-2" value="50000000" />
     <p class="text-xs text-gray-500 mt-1">各フロアの「差分」がこの値と一致したら「問題なし」。</p>
   </section>
 
@@ -138,7 +138,13 @@ const COINS = [
 ];
 const fmt = (n)=> Number(n||0).toLocaleString();
 const num = (v)=> { const s = String(v??'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
-
+function setSignedText(el, value){
+  const sign = value > 0 ? '+' : (value < 0 ? '-' : '');
+  el.textContent = value === 0 ? '0' : `${sign}${fmt(Math.abs(value))}`;
+  el.classList.remove('text-red-600','text-blue-600');
+  if (value > 0) el.classList.add('text-blue-600');
+  if (value < 0) el.classList.add('text-red-600');
+}
 /* ========= テンプレ取得（最初に固定） ========= */
 const tplFloor = document.getElementById('floor-template');
 const tplCoin  = document.getElementById('coin-row-template');
@@ -297,7 +303,8 @@ function recalcSec(sec){
   const expect=prev+inTot-outTot;
   sec.querySelector('.expected-total').textContent=fmt(expect);
   const diff=expect-today;
-  sec.querySelector('.diff').textContent=fmt(diff);
+  const signed = today - expect; // 表示用（+は過剰、-は不足）
+  setSignedText(sec.querySelector('.diff'), signed);
 
   // 判定差分（完全一致でOK）
   const judge = getJudge();
@@ -338,14 +345,15 @@ function recalcFinal(){
   fin.querySelector('#sum-2F-out-count').textContent= v('2F','outCount');
   fin.querySelector('#sum-2F-out-total').textContent= fmt(v('2F','outTotal'));
 
-  const todayAll = v('1F','todayTotal') + v('2F','todayTotal');
+  const judge = getJudge();
+  const todayAllRaw = v('1F','todayTotal') + v('2F','todayTotal');
+  const todayAll = todayAllRaw + judge; // 判定差分も合算して表示
   fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
   const prevAll = num(document.getElementById('prev-total-all').value);
-  const adj = num(document.getElementById('judge-diff').value)
-  const diffAll = todayAll - prevAll + adj; // 調整額を足す仕様にするなら + adj をここに
-  fin.querySelector('#diff-all').textContent = fmt(diffAll);
-
+  const diffAll = todayAll - prevAll; // todayAllに判定差分を含めたのでここでは加算しない
+  setSignedText(fin.querySelector('#diff-all'), diffAll);
+  
   // ▼ 最終タブの出納帳メッセージ
   let ledgerFin = document.getElementById('ledger-final');
   if (!ledgerFin) {
@@ -355,7 +363,6 @@ function recalcFinal(){
     // diff-all を含む<p>の直後に挿入
     fin.querySelector('#diff-all').parentElement.after(ledgerFin);
   }
-  const judge = getJudge();
   const okFin = (diffAll === 0 || diffAll === judge);
   ledgerFin.textContent = okFin ? `出納帳に${fmt(todayAll)}円と記入してください。` : '';
 }
