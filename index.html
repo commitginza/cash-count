@@ -9,6 +9,11 @@
 </head>
 <body class="bg-gray-100 p-6">
   <h1 class="text-2xl font-bold mb-6">現金管理ツール</h1>
+  <div class="flex gap-2 mb-4">
+    <button id="btn-save" class="bg-emerald-600 text-white px-3 py-2 rounded">保存</button>
+    <button id="btn-clear" class="bg-red-600 text-white px-3 py-2 rounded">保存データ削除</button>
+    <span id="save-status" class="text-sm text-gray-500 self-center"></span>
+  </div>
 
   <!-- 判定差分（許容誤差なし） -->
   <section class="bg-white shadow rounded-xl p-4 mb-4">
@@ -136,6 +141,7 @@ const COINS = [
   { label: '5円',   value: 5  },
   { label: '1円',   value: 1  }
 ];
+const LS_KEY = 'cashToolStateV1';
 const fmt = (n)=> Number(n||0).toLocaleString();
 const num = (v)=> { const s = String(v??'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
 function setSignedText(el, value){
@@ -145,15 +151,13 @@ function setSignedText(el, value){
   if (value > 0) el.classList.add('text-blue-600');
   if (value < 0) el.classList.add('text-red-600');
 }
-/* ========= テンプレ取得（最初に固定） ========= */
+const debounce = (fn, ms=400)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; };
+
+/* ========= テンプレ取得 ========= */
 const tplFloor = document.getElementById('floor-template');
 const tplCoin  = document.getElementById('coin-row-template');
 const tplFinal = document.getElementById('final-template');
 const container = document.getElementById('tab-contents');
-
-if (!tplFloor || !tplCoin || !tplFinal || !container) {
-  console.error('テンプレートまたはコンテナが見つかりません。');
-}
 
 /* ========= タブ切替 ========= */
 document.getElementById('tabs').addEventListener('click', (e)=>{
@@ -167,7 +171,6 @@ document.getElementById('tabs').addEventListener('click', (e)=>{
     b.classList.toggle('bg-gray-300', !on);
     b.classList.toggle('text-gray-800',!on);
   });
-  // ここで data-tab-content を持つセクションを確実に切替
   document.querySelectorAll('[data-tab-content]').forEach(sec=>{
     sec.classList.toggle('hidden', sec.id !== tgt);
   });
@@ -188,15 +191,13 @@ const sections = {}; // {'1F': HTMLElement, '2F': HTMLElement}
 
 /* ========= フロア生成 ========= */
 function buildFloor(floor){
-  // テンプレから section をクローン
   const sec = tplFloor.content.querySelector('section').cloneNode(true);
   sec.id = `tab-${floor}`;
   sec.dataset.floor = floor;
   sec.setAttribute('data-tab-content','');
-  if (floor !== '1F') sec.classList.add('hidden'); // 初期は1Fだけ表示
+  if (floor !== '1F') sec.classList.add('hidden');
   sec.querySelector('h2').textContent = floor;
 
-  // 入/出 テーブル初期行
   const inT = sec.querySelector('[data-type="in-table"]');
   const ouT = sec.querySelector('[data-type="out-table"]');
   for(let i=0;i<5;i++){
@@ -204,31 +205,29 @@ function buildFloor(floor){
     addRow(ouT,`floor-${floor}-out`);
   }
 
-  // 小銭
   const coinGrid = sec.querySelector('.coin-grid');
   COINS.forEach(({label,value})=>{
-    const frag = tplCoin.content.firstElementChild.cloneNode(true); // <div>…
+    const frag = tplCoin.content.firstElementChild.cloneNode(true);
     frag.querySelector('label').textContent = label;
     frag.querySelector('input').dataset.value = value;
     coinGrid.appendChild(frag);
   });
 
-  // 行追加ボタン
   sec.querySelectorAll('.add-row').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const kind = btn.dataset.type; // 'in' | 'out'
       const tbl  = sec.querySelector(`[data-type="${kind}-table"]`);
       addRow(tbl,`floor-${floor}-${kind}`);
       recalcSec(sec); recalcFinal();
+      autoSave();
     });
   });
 
-  // 入力フォーマット
-  sec.addEventListener('input', ()=>{recalcSec(sec); recalcFinal();});
+  sec.addEventListener('input', ()=>{recalcSec(sec); recalcFinal(); autoSave();});
   sec.addEventListener('blur', e=>{
     if(e.target.classList.contains('floor-input')){
       e.target.value = fmt(num(e.target.value));
-      recalcSec(sec); recalcFinal();
+      recalcSec(sec); recalcFinal(); autoSave();
     }
   }, true);
   sec.addEventListener('focus', e=>{
@@ -239,40 +238,40 @@ function buildFloor(floor){
   return sec;
 }
 
-/* ========= セクションを“必ず”作る（片方が失敗しても続行） ========= */
+/* ========= セクション生成 ========= */
 ['1F','2F'].forEach(f=>{
   try {
     const sec = buildFloor(f);
     container.appendChild(sec);
     sections[f] = sec;
-    recalcSec(sec); // 初期計算
+    recalcSec(sec);
   } catch(err){
     console.error(`"${f}" の組み立てでエラー:`, err);
   }
 });
 
-/* ========= 最終タブ生成（hidden除去） ========= */
+/* ========= 最終タブ生成 ========= */
 try {
   const final = tplFinal.content.querySelector('section').cloneNode(true);
   final.setAttribute('data-tab-content','');
-  final.classList.remove('hidden'); // ← 最初からTailwindのhiddenが付いてるので外す
+  final.classList.remove('hidden');
   container.appendChild(final);
 
   const prev=final.querySelector('#prev-total-all');
-  prev.addEventListener('blur',()=>{prev.value=fmt(num(prev.value));recalcFinal();});
+  prev.addEventListener('blur',()=>{prev.value=fmt(num(prev.value));recalcFinal(); autoSave();});
   prev.addEventListener('focus',()=>{prev.value=String(num(prev.value));});
 } catch(err){
   console.error('最終タブの組み立てでエラー:', err);
 }
 
-/* ========= 判定差分（許容誤差なし） ========= */
+/* ========= 判定差分 ========= */
 const judgeEl = document.getElementById('judge-diff');
 const getJudge = () => num(judgeEl?.value ?? 0);
 if (judgeEl) {
-  const re = ()=>{ judgeEl.value = fmt(num(judgeEl.value)); Object.values(sections).forEach(recalcSec); recalcFinal(); };
+  const re = ()=>{ judgeEl.value = fmt(num(judgeEl.value)); Object.values(sections).forEach(recalcSec); recalcFinal(); autoSave(); };
   judgeEl.addEventListener('blur', re);
   judgeEl.addEventListener('focus', ()=>{ judgeEl.value = String(num(judgeEl.value)); });
-  judgeEl.addEventListener('input', ()=>{ Object.values(sections).forEach(recalcSec); recalcFinal(); });
+  judgeEl.addEventListener('input', ()=>{ Object.values(sections).forEach(recalcSec); recalcFinal(); autoSave(); });
 }
 
 /* ========= 計算 ========= */
@@ -303,23 +302,21 @@ function recalcSec(sec){
   const expect=prev+inTot-outTot;
   sec.querySelector('.expected-total').textContent=fmt(expect);
   const diff=expect-today;
-  const signed = today - expect; // 表示用（+は過剰、-は不足）
+  const signed = today - expect; // +は過剰、-は不足
   setSignedText(sec.querySelector('.diff'), signed);
 
-  // 判定差分（完全一致でOK）
   const judge = getJudge();
   const ok = (diff === 0 || diff === judge);
   sec.querySelector('.status-label').textContent = ok ? '問題なし' : '';
-  // 出納帳メッセージ（存在しなければ作成）
+
   let ledger = sec.querySelector('.ledger-msg');
   if (!ledger) {
     ledger = document.createElement('p');
     ledger.className = 'ledger-msg text-blue-600 mt-1';
     sec.querySelector('.status-label').after(ledger);
   }
-  // diffが0 または 判定差分と一致 → 表示 / それ以外 → 非表示
   ledger.textContent = ok ? `出納帳に${fmt(expect)}円と記入してください。` : '';
-  
+
   Object.assign(sec.dataset,{
     inTotal:inTot,
     outTotal:outTot,
@@ -347,28 +344,152 @@ function recalcFinal(){
 
   const judge = getJudge();
   const todayAllRaw = v('1F','todayTotal') + v('2F','todayTotal');
-  const todayAll = todayAllRaw + judge; // 判定差分も合算して表示
+  const todayAll = todayAllRaw + judge;
   fin.querySelector('#today-total-all').textContent = fmt(todayAll);
 
   const prevAll = num(document.getElementById('prev-total-all').value);
-  const diffAll = todayAll - prevAll; // todayAllに判定差分を含めたのでここでは加算しない
+  const diffAll = todayAll - prevAll;
   setSignedText(fin.querySelector('#diff-all'), diffAll);
-  
-  // ▼ 最終タブの出納帳メッセージ
+
   let ledgerFin = document.getElementById('ledger-final');
   if (!ledgerFin) {
     ledgerFin = document.createElement('p');
     ledgerFin.id = 'ledger-final';
     ledgerFin.className = 'mt-1 text-blue-600';
-    // diff-all を含む<p>の直後に挿入
     fin.querySelector('#diff-all').parentElement.after(ledgerFin);
   }
   const okFin = (diffAll === 0 || diffAll === judge);
   ledgerFin.textContent = okFin ? `出納帳に${fmt(todayAll)}円と記入してください。` : '';
 }
 
-/* 初期一発 */
+/* ========= ここから保存/復元 ========= */
+// 現在のDOM→状態オブジェクトへ
+function collectState(){
+  const packFloor = (f)=>{
+    const sec = sections[f];
+    const inVals  = [...sec.querySelectorAll(`.floor-${f}-in` )].map(i=>num(i.value));
+    const outVals = [...sec.querySelectorAll(`.floor-${f}-out`)].map(i=>num(i.value));
+    const coins = {};
+    sec.querySelectorAll('.coin-count').forEach(inp=>{
+      coins[inp.dataset.value] = num(inp.value);
+    });
+    return {
+      prevCash: num(sec.querySelector('.prev-cash').value),
+      inVals, outVals,
+      bundleCount: num(sec.querySelector('.bundle-count').value),
+      partialCash: num(sec.querySelector('.partial-cash').value),
+      coins
+    };
+  };
+  return {
+    judgeDiff: num(document.getElementById('judge-diff').value),
+    floors: { '1F': packFloor('1F'), '2F': packFloor('2F') },
+    final : { prevTotalAll: num(document.getElementById('prev-total-all').value) },
+    version: 1
+  };
+}
+
+// 状態→DOMへ反映（必要な行数も揃える）
+function applyState(state){
+  if (!state || state.version!==1) return;
+
+  // 判定差分
+  const jd = document.getElementById('judge-diff');
+  if (jd){ jd.value = fmt(state.judgeDiff||0); }
+
+  const ensureRows = (sec, f, kind, needLen)=>{
+    const tbl = sec.querySelector(`[data-type="${kind}-table"]`);
+    const cls = `floor-${f}-${kind}`;
+    const cur = tbl.querySelectorAll(`.${cls}`).length;
+    for(let i=cur;i<needLen;i++) addRow(tbl, cls);
+  };
+
+  ['1F','2F'].forEach(f=>{
+    const sec = sections[f];
+    const st = state.floors?.[f]; if(!sec || !st) return;
+
+    // 行数合わせ
+    ensureRows(sec, f, 'in',  st.inVals?.length  || 0);
+    ensureRows(sec, f, 'out', st.outVals?.length || 0);
+
+    // 単項目
+    sec.querySelector('.prev-cash').value    = st.prevCash ?? 0;
+    sec.querySelector('.bundle-count').value = st.bundleCount ?? 0;
+    sec.querySelector('.partial-cash').value = st.partialCash ?? 0;
+
+    // in/out
+    [...sec.querySelectorAll(`.floor-${f}-in` )].forEach((inp,i)=>{
+      inp.value = st.inVals?.[i] ?? 0;
+    });
+    [...sec.querySelectorAll(`.floor-${f}-out`)].forEach((inp,i)=>{
+      inp.value = st.outVals?.[i] ?? 0;
+    });
+
+    // coins
+    sec.querySelectorAll('.coin-count').forEach(inp=>{
+      const v = st.coins?.[inp.dataset.value] ?? 0;
+      inp.value = v;
+    });
+
+    // 表示整形→再計算
+    sec.querySelectorAll('.floor-input').forEach(i=>{ i.value = fmt(num(i.value)); });
+    recalcSec(sec);
+  });
+
+  // 最終
+  const pta = document.getElementById('prev-total-all');
+  if (pta){ pta.value = fmt(state.final?.prevTotalAll ?? 0); }
+
+  recalcFinal();
+}
+
+// 保存・復元・削除API
+function saveNow(){
+  try{
+    const state = collectState();
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    setSaveStatus('保存しました');
+  }catch(e){
+    console.error(e);
+    setSaveStatus('保存に失敗しました');
+  }
+}
+function loadIfAny(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) { recalcFinal(); return; }
+    const state = JSON.parse(raw);
+    applyState(state);
+    setSaveStatus('保存データから復元済み');
+  }catch(e){
+    console.error(e);
+    setSaveStatus('復元に失敗しました');
+  }
+}
+function clearSaved(){
+  localStorage.removeItem(LS_KEY);
+  setSaveStatus('保存データを削除しました');
+}
+const autoSave = debounce(saveNow, 600);
+function setSaveStatus(msg){
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  el.textContent = msg;
+  setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; }, 2000);
+}
+
+/* ========= 初期処理 ========= */
+function firstFormatAll(){
+  document.querySelectorAll('.floor-input').forEach(i=>{ i.value = fmt(num(i.value)); });
+}
+firstFormatAll();
 recalcFinal();
+loadIfAny();
+
+/* ========= ボタン: 保存/削除 ========= */
+document.getElementById('btn-save')?.addEventListener('click', saveNow);
+document.getElementById('btn-clear')?.addEventListener('click', clearSaved);
 </script>
+
 </body>
 </html>
