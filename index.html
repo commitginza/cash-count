@@ -9,487 +9,194 @@
 </head>
 <body class="bg-gray-100 p-6">
   <h1 class="text-2xl font-bold mb-6">現金管理ツール</h1>
-  <div class="flex gap-2 mb-4">
-    <button id="btn-save" class="bg-emerald-600 text-white px-3 py-2 rounded">保存</button>
-    <button id="btn-clear" class="bg-red-600 text-white px-3 py-2 rounded">保存データ削除</button>
-    <span id="save-status" class="text-sm text-gray-500 self-center"></span>
-  </div>
 
-  <!-- 判定差分（許容誤差なし） -->
-  <section class="bg-white shadow rounded-xl p-4 mb-4">
-    <label class="block text-sm font-medium text-gray-700 mb-1">判定差分 (円)</label>
-    <input type="text" inputmode="numeric" id="judge-diff" class="w-full border rounded p-2" value="0" />
-    <p class="text-xs text-gray-500 mt-1">各フロアの「差分」がこの値と一致したら「問題なし」。</p>
-  </section>
-
-  <!-- タブ -->
-  <div id="tabs" class="flex space-x-2 mb-4">
+  <div id="tabs" class="flex flex-wrap gap-2 mb-4">
     <button data-tab="tab-1F" class="tab-btn bg-blue-600 text-white px-4 py-2 rounded">1F</button>
     <button data-tab="tab-2F" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded">2F</button>
-    <button data-tab="tab-final" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded ml-auto">最終</button>
+    <button data-tab="tab-expense" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded">経費</button>
+    <button data-tab="tab-total" class="tab-btn bg-gray-300 text-gray-800 px-4 py-2 rounded ml-auto">トータル</button>
   </div>
 
   <div id="tab-contents"></div>
 
-  <!-- Floor テンプレ -->
-  <template id="floor-template">
-    <section class="bg-white shadow rounded-xl p-6 mb-10" data-floor="" data-tab-content>
+  <template id="cash-template">
+    <section class="bg-white shadow rounded-xl p-6 mb-10" data-tab-content data-section="">
       <h2 class="text-xl font-semibold mb-4"></h2>
 
       <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-700 mb-1">前日の現金 (円)</label>
-        <input type="text" inputmode="numeric" class="prev-cash floor-input w-full border rounded p-2" value="0" />
-      </div>
+        <h3 class="text-lg font-medium mb-4">当日現金</h3>
 
-      <div class="flex flex-col md:flex-row md:space-x-6">
-        <div class="mb-6 flex-1">
-          <h3 class="text-lg font-medium mb-2">入 (円)</h3>
-          <table class="min-w-full mb-2" data-type="in-table"></table>
-          <button type="button" class="add-row bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-sm" data-type="in">追加</button>
-          <p class="mt-2">件数: <span class="in-count font-semibold">0</span>　合計: <span class="in-total font-semibold">0</span> 円</p>
-        </div>
-
-        <div class="mb-6 flex-1">
-          <h3 class="text-lg font-medium mb-2">出 (円)</h3>
-          <table class="min-w-full mb-2" data-type="out-table"></table>
-          <button type="button" class="add-row bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-sm" data-type="out">追加</button>
-          <p class="mt-2">件数: <span class="out-count font-semibold">0</span>　合計: <span class="out-total font-semibold">0</span> 円</p>
-        </div>
-      </div>
-
-      <div class="mb-6">
-        <h3 class="text-lg font-medium mb-2">当日現金</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label class="block text-sm mb-1">100万のまとまり (束数または金額)</label>
-            <input type="text" inputmode="numeric" class="bundle-count floor-input w-full border rounded p-2" value="0" />
+            <input type="text" inputmode="numeric" class="cash-input bundle-count w-full border rounded p-2" value="0" />
           </div>
           <div>
-            <label class="block text-sm mb-1">100万以外の端数札り (円)</label>
-            <input type="text" inputmode="numeric" class="partial-cash floor-input w-full border rounded p-2" value="0" />
+            <label class="block text-sm mb-1">100万以外の端数札 (円)</label>
+            <input type="text" inputmode="numeric" class="cash-input partial-cash w-full border rounded p-2" value="0" />
           </div>
         </div>
 
         <h4 class="font-medium mb-2">小銭 (枚数を入力)</h4>
         <div class="coin-grid grid grid-cols-2 md:grid-cols-3 gap-4"></div>
-        <p class="mt-2">小銭 合計: <span class="coin-total font-semibold">0</span> 円</p>
       </div>
 
       <div class="border-t pt-4">
-        <table class="w-full text-sm">
-          <tbody>
-            <tr><th class="text-left pr-4">前日現金</th><td><span class="prev-val font-semibold">0</span> 円</td></tr>
-            <tr><th class="text-left pr-4">入 合計</th><td class="text-green-600">+<span class="in-total font-semibold">0</span> 円</td></tr>
-            <tr><th class="text-left pr-4">出 合計</th><td class="text-red-600">-<span class="out-total font-semibold">0</span> 円</td></tr>
-            <tr><th class="text-left pr-4">当日現金 合計</th><td><span class="today-total font-semibold">0</span> 円</td></tr>
-            <tr><th class="text-left pr-4">期待値</th><td><span class="expected-total font-semibold">0</span> 円</td></tr>
-            <tr><th class="text-left pr-4">差分</th><td><span class="diff font-bold">0</span> 円</td></tr>
-          </tbody>
-        </table>
-        <p class="status-label text-green-600 font-semibold mt-1"></p>
+        <p class="text-lg font-semibold">当日現金 合計: <span class="today-total">0</span> 円</p>
       </div>
     </section>
   </template>
 
-  <!-- コイン入力テンプレ -->
   <template id="coin-row-template">
     <div>
       <label class="block text-sm mb-1"></label>
-      <input type="text" inputmode="numeric" class="coin-count floor-input w-full border rounded p-2" data-value="" value="0" />
+      <input type="text" inputmode="numeric" class="cash-input coin-count w-full border rounded p-2" data-value="" value="0" />
     </div>
   </template>
 
-  <!-- Final テンプレ -->
-  <template id="final-template">
-    <section class="bg-white shadow rounded-xl p-6 mb-10 hidden" id="tab-final" data-tab-content>
-      <h2 class="text-xl font-semibold mb-4">最終集計</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 class="font-medium mb-2">1F まとめ</h3>
-          <p>入 件数: <span id="sum-1F-in-count">0</span></p>
-          <p>入 合計: <span id="sum-1F-in-total">0</span> 円</p>
-          <p>出 件数: <span id="sum-1F-out-count">0</span></p>
-          <p>出 合計: <span id="sum-1F-out-total">0</span> 円</p>
+  <template id="total-template">
+    <section class="bg-white shadow rounded-xl p-6 mb-10 hidden" id="tab-total" data-tab-content>
+      <h2 class="text-xl font-semibold mb-4">トータル</h2>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between border rounded-lg p-4">
+          <span class="font-medium">1F 当日現金合計</span>
+          <span id="total-1F" class="text-lg font-semibold">0 円</span>
         </div>
-        <div>
-          <h3 class="font-medium mb-2">2F まとめ</h3>
-          <p>入 件数: <span id="sum-2F-in-count">0</span></p>
-          <p>入 合計: <span id="sum-2F-in-total">0</span> 円</p>
-          <p>出 件数: <span id="sum-2F-out-count">0</span></p>
-          <p>出 合計: <span id="sum-2F-out-total">0</span> 円</p>
+        <div class="flex items-center justify-between border rounded-lg p-4">
+          <span class="font-medium">2F 当日現金合計</span>
+          <span id="total-2F" class="text-lg font-semibold">0 円</span>
+        </div>
+        <div class="flex items-center justify-between border rounded-lg p-4">
+          <span class="font-medium">経費 当日現金合計</span>
+          <span id="total-expense" class="text-lg font-semibold">0 円</span>
         </div>
       </div>
-      <hr class="my-4">
-      <div class="mb-4">
-        <label class="block text-sm font-medium mb-1">前日の総合計 (円)</label>
-        <input type="text" inputmode="numeric" id="prev-total-all" class="w-full border rounded p-2" value="0" />
-      </div>
-      <p>今日の現金総合計: <span id="today-total-all" class="font-semibold">0</span> 円</p>
-      <p class="text-lg mt-2">差分: <span id="diff-all" class="font-bold">0</span> 円</p>
     </section>
   </template>
 
-<!-- ここまでのHTMLはそのままでOK（テンプレ群は <script> の“前”に置いてください） -->
+  <script>
+    const COINS = [
+      { label: '500円', value: 500 },
+      { label: '100円', value: 100 },
+      { label: '50円',  value: 50 },
+      { label: '10円',  value: 10 },
+      { label: '5円',   value: 5 },
+      { label: '1円',   value: 1 }
+    ];
 
-<script>
-/* ========= 定数/ユーティリティ ========= */
-const COINS = [
-  { label: '500円', value: 500 },
-  { label: '100円', value: 100 },
-  { label: '50円',  value: 50 },
-  { label: '10円',  value: 10 },
-  { label: '5円',   value: 5  },
-  { label: '1円',   value: 1  }
-];
-const LS_KEY = 'cashToolStateV1';
-const fmt = (n)=> Number(n||0).toLocaleString();
-const num = (v)=> { const s = String(v??'').replace(/[^0-9.-]/g,''); return parseInt(s,10)||0; };
-function setSignedText(el, value){
-  const sign = value > 0 ? '+' : (value < 0 ? '-' : '');
-  el.textContent = value === 0 ? '0' : `${sign}${fmt(Math.abs(value))}`;
-  el.classList.remove('text-red-600','text-blue-600');
-  if (value > 0) el.classList.add('text-blue-600');
-  if (value < 0) el.classList.add('text-red-600');
-}
-const debounce = (fn, ms=400)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; };
+    const TABS = [
+      { key: '1F', tabId: 'tab-1F', totalId: 'total-1F' },
+      { key: '2F', tabId: 'tab-2F', totalId: 'total-2F' },
+      { key: '経費', tabId: 'tab-expense', totalId: 'total-expense' }
+    ];
 
-/* ========= テンプレ取得 ========= */
-const tplFloor = document.getElementById('floor-template');
-const tplCoin  = document.getElementById('coin-row-template');
-const tplFinal = document.getElementById('final-template');
-const container = document.getElementById('tab-contents');
-
-/* ========= タブ切替 ========= */
-document.getElementById('tabs').addEventListener('click', (e)=>{
-  const btn = e.target.closest('button.tab-btn');
-  if (!btn) return;
-  const tgt = btn.dataset.tab;
-  document.querySelectorAll('.tab-btn').forEach(b=>{
-    const on = b.dataset.tab === tgt;
-    b.classList.toggle('bg-blue-600', on);
-    b.classList.toggle('text-white',  on);
-    b.classList.toggle('bg-gray-300', !on);
-    b.classList.toggle('text-gray-800',!on);
-  });
-  document.querySelectorAll('[data-tab-content]').forEach(sec=>{
-    sec.classList.toggle('hidden', sec.id !== tgt);
-  });
-});
-
-/* ========= 行追加ヘルパー ========= */
-function addRow(tbl, cls){
-  const tr = document.createElement('tr');
-  const td = document.createElement('td');
-  const inp= document.createElement('input');
-  inp.type='text'; inp.inputMode='numeric'; inp.value='0';
-  inp.className=`${cls} floor-input w-full border rounded p-2`;
-  td.appendChild(inp); tr.appendChild(td); tbl.appendChild(tr);
-}
-
-/* ========= 状態置き場 ========= */
-const sections = {}; // {'1F': HTMLElement, '2F': HTMLElement}
-
-/* ========= フロア生成 ========= */
-function buildFloor(floor){
-  const sec = tplFloor.content.querySelector('section').cloneNode(true);
-  sec.id = `tab-${floor}`;
-  sec.dataset.floor = floor;
-  sec.setAttribute('data-tab-content','');
-  if (floor !== '1F') sec.classList.add('hidden');
-  sec.querySelector('h2').textContent = floor;
-
-  const inT = sec.querySelector('[data-type="in-table"]');
-  const ouT = sec.querySelector('[data-type="out-table"]');
-  for(let i=0;i<5;i++){
-    addRow(inT,`floor-${floor}-in`);
-    addRow(ouT,`floor-${floor}-out`);
-  }
-
-  const coinGrid = sec.querySelector('.coin-grid');
-  COINS.forEach(({label,value})=>{
-    const frag = tplCoin.content.firstElementChild.cloneNode(true);
-    frag.querySelector('label').textContent = label;
-    frag.querySelector('input').dataset.value = value;
-    coinGrid.appendChild(frag);
-  });
-
-  sec.querySelectorAll('.add-row').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const kind = btn.dataset.type; // 'in' | 'out'
-      const tbl  = sec.querySelector(`[data-type="${kind}-table"]`);
-      addRow(tbl,`floor-${floor}-${kind}`);
-      recalcSec(sec); recalcFinal();
-      autoSave();
-    });
-  });
-
-  sec.addEventListener('input', ()=>{recalcSec(sec); recalcFinal(); autoSave();});
-  sec.addEventListener('blur', e=>{
-    if(e.target.classList.contains('floor-input')){
-      e.target.value = fmt(num(e.target.value));
-      recalcSec(sec); recalcFinal(); autoSave();
-    }
-  }, true);
-  sec.addEventListener('focus', e=>{
-    if(e.target.classList.contains('floor-input'))
-      e.target.value = String(num(e.target.value));
-  }, true);
-
-  return sec;
-}
-
-/* ========= セクション生成 ========= */
-['1F','2F'].forEach(f=>{
-  try {
-    const sec = buildFloor(f);
-    container.appendChild(sec);
-    sections[f] = sec;
-    recalcSec(sec);
-  } catch(err){
-    console.error(`"${f}" の組み立てでエラー:`, err);
-  }
-});
-
-/* ========= 最終タブ生成 ========= */
-try {
-  const final = tplFinal.content.querySelector('section').cloneNode(true);
-  final.setAttribute('data-tab-content','');
-  final.classList.remove('hidden');
-  container.appendChild(final);
-
-  const prev=final.querySelector('#prev-total-all');
-  prev.addEventListener('blur',()=>{prev.value=fmt(num(prev.value));recalcFinal(); autoSave();});
-  prev.addEventListener('focus',()=>{prev.value=String(num(prev.value));});
-} catch(err){
-  console.error('最終タブの組み立てでエラー:', err);
-}
-
-/* ========= 判定差分 ========= */
-const judgeEl = document.getElementById('judge-diff');
-const getJudge = () => num(judgeEl?.value ?? 0);
-if (judgeEl) {
-  const re = ()=>{ judgeEl.value = fmt(num(judgeEl.value)); Object.values(sections).forEach(recalcSec); recalcFinal(); autoSave(); };
-  judgeEl.addEventListener('blur', re);
-  judgeEl.addEventListener('focus', ()=>{ judgeEl.value = String(num(judgeEl.value)); });
-  judgeEl.addEventListener('input', ()=>{ Object.values(sections).forEach(recalcSec); recalcFinal(); autoSave(); });
-}
-
-/* ========= 計算 ========= */
-function recalcSec(sec){
-  const f=sec.dataset.floor, selIn=`.floor-${f}-in`, selOut=`.floor-${f}-out`;
-  const sum = sel=>[...sec.querySelectorAll(sel)].reduce((a,e)=>a+num(e.value),0);
-  const cnt = sel=>[...sec.querySelectorAll(sel)].filter(e=>num(e.value)>0).length;
-
-  const inTot=sum(selIn), outTot=sum(selOut);
-  const ioDiff = inTot - outTot;
-  sec.querySelectorAll('.in-total').forEach(el => el.textContent = fmt(inTot));
-  sec.querySelectorAll('.out-total').forEach(el => el.textContent = fmt(outTot));
-  sec.querySelector('.in-count').textContent = cnt(selIn);
-  sec.querySelector('.out-count').textContent= cnt(selOut);
-
-  const coinTot=[...sec.querySelectorAll('.coin-count')]
-    .reduce((a,e)=>a+num(e.value)*parseInt(e.dataset.value,10),0);
-  sec.querySelector('.coin-total').textContent=fmt(coinTot);
-
-  const bundleRaw=num(sec.querySelector('.bundle-count').value);
-  const bundleAmt=bundleRaw>=1_000_000?bundleRaw:bundleRaw*1_000_000;
-  const partial =num(sec.querySelector('.partial-cash').value);
-  const today   = bundleAmt+partial+coinTot;
-  sec.querySelector('.today-total').textContent=fmt(today);
-
-  const prev=num(sec.querySelector('.prev-cash').value);
-  sec.querySelector('.prev-val').textContent = fmt(prev);
-  const expect=prev+inTot-outTot;
-  sec.querySelector('.expected-total').textContent=fmt(expect);
-  const diff=expect-today;
-  const signed = today - expect; // +は過剰、-は不足
-  setSignedText(sec.querySelector('.diff'), signed);
-
-  const judge = getJudge();
-  const ok = (diff === 0 || diff === judge);
-  sec.querySelector('.status-label').textContent = ok ? '問題なし' : '';
-
-  let ledger = sec.querySelector('.ledger-msg');
-  if (!ledger) {
-    ledger = document.createElement('p');
-    ledger.className = 'ledger-msg text-blue-600 mt-1';
-    sec.querySelector('.status-label').after(ledger);
-  }
-  ledger.textContent = ok ? `出納帳に${fmt(expect)}円と記入してください。` : '';
-
-  Object.assign(sec.dataset,{
-    inTotal:inTot,
-    outTotal:outTot,
-    inCount:cnt(selIn),
-    outCount:cnt(selOut),
-    todayTotal:today,
-    expectedTotal: expect,
-    ioDiff
-  });
-}
-
-function recalcFinal(){
-  const fin=document.getElementById('tab-final'); if(!fin) return;
-  const v=(fl,k)=>parseInt(sections[fl]?.dataset?.[k] ?? 0,10);
-  
-  fin.querySelector('#sum-1F-in-count').textContent = v('1F','inCount');
-  fin.querySelector('#sum-1F-in-total').textContent = fmt(v('1F','inTotal'));
-  fin.querySelector('#sum-1F-out-count').textContent= v('1F','outCount');
-  fin.querySelector('#sum-1F-out-total').textContent= fmt(v('1F','outTotal'));
-
-  fin.querySelector('#sum-2F-in-count').textContent = v('2F','inCount');
-  fin.querySelector('#sum-2F-in-total').textContent = fmt(v('2F','inTotal'));
-  fin.querySelector('#sum-2F-out-count').textContent= v('2F','outCount');
-  fin.querySelector('#sum-2F-out-total').textContent= fmt(v('2F','outTotal'));
-
-  const judge = getJudge();
-  const todayAllRaw = v('1F','todayTotal') + v('2F','todayTotal');
-  const todayAll = todayAllRaw + judge;
-  fin.querySelector('#today-total-all').textContent = fmt(todayAll);
-
-  const prevAll = num(document.getElementById('prev-total-all').value);
-  const diffAll = todayAll - prevAll;
-  setSignedText(fin.querySelector('#diff-all'), diffAll);
-
-  let ledgerFin = document.getElementById('ledger-final');
-  if (!ledgerFin) {
-    ledgerFin = document.createElement('p');
-    ledgerFin.id = 'ledger-final';
-    ledgerFin.className = 'mt-1 text-blue-600';
-    fin.querySelector('#diff-all').parentElement.after(ledgerFin);
-  }
-  const okFin = (diffAll === 0 || diffAll === judge);
-  ledgerFin.textContent = okFin ? `出納帳に${fmt(todayAll)}円と記入してください。` : '';
-}
-
-/* ========= ここから保存/復元 ========= */
-// 現在のDOM→状態オブジェクトへ
-function collectState(){
-  const packFloor = (f)=>{
-    const sec = sections[f];
-    const inVals  = [...sec.querySelectorAll(`.floor-${f}-in` )].map(i=>num(i.value));
-    const outVals = [...sec.querySelectorAll(`.floor-${f}-out`)].map(i=>num(i.value));
-    const coins = {};
-    sec.querySelectorAll('.coin-count').forEach(inp=>{
-      coins[inp.dataset.value] = num(inp.value);
-    });
-    return {
-      prevCash: num(sec.querySelector('.prev-cash').value),
-      inVals, outVals,
-      bundleCount: num(sec.querySelector('.bundle-count').value),
-      partialCash: num(sec.querySelector('.partial-cash').value),
-      coins
+    const fmt = (n) => Number(n || 0).toLocaleString();
+    const num = (v) => {
+      const s = String(v ?? '').replace(/[^0-9.-]/g, '');
+      return parseInt(s, 10) || 0;
     };
-  };
-  return {
-    judgeDiff: num(document.getElementById('judge-diff').value),
-    floors: { '1F': packFloor('1F'), '2F': packFloor('2F') },
-    final : { prevTotalAll: num(document.getElementById('prev-total-all').value) },
-    version: 1
-  };
-}
 
-// 状態→DOMへ反映（必要な行数も揃える）
-function applyState(state){
-  if (!state || state.version!==1) return;
+    const tplCash = document.getElementById('cash-template');
+    const tplCoin = document.getElementById('coin-row-template');
+    const tplTotal = document.getElementById('total-template');
+    const container = document.getElementById('tab-contents');
+    const sections = {};
 
-  // 判定差分
-  const jd = document.getElementById('judge-diff');
-  if (jd){ jd.value = fmt(state.judgeDiff||0); }
+    document.getElementById('tabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab-btn');
+      if (!btn) return;
 
-  const ensureRows = (sec, f, kind, needLen)=>{
-    const tbl = sec.querySelector(`[data-type="${kind}-table"]`);
-    const cls = `floor-${f}-${kind}`;
-    const cur = tbl.querySelectorAll(`.${cls}`).length;
-    for(let i=cur;i<needLen;i++) addRow(tbl, cls);
-  };
+      const targetTabId = btn.dataset.tab;
 
-  ['1F','2F'].forEach(f=>{
-    const sec = sections[f];
-    const st = state.floors?.[f]; if(!sec || !st) return;
+      document.querySelectorAll('.tab-btn').forEach((tabBtn) => {
+        const isActive = tabBtn.dataset.tab === targetTabId;
+        tabBtn.classList.toggle('bg-blue-600', isActive);
+        tabBtn.classList.toggle('text-white', isActive);
+        tabBtn.classList.toggle('bg-gray-300', !isActive);
+        tabBtn.classList.toggle('text-gray-800', !isActive);
+      });
 
-    // 行数合わせ
-    ensureRows(sec, f, 'in',  st.inVals?.length  || 0);
-    ensureRows(sec, f, 'out', st.outVals?.length || 0);
-
-    // 単項目
-    sec.querySelector('.prev-cash').value    = st.prevCash ?? 0;
-    sec.querySelector('.bundle-count').value = st.bundleCount ?? 0;
-    sec.querySelector('.partial-cash').value = st.partialCash ?? 0;
-
-    // in/out
-    [...sec.querySelectorAll(`.floor-${f}-in` )].forEach((inp,i)=>{
-      inp.value = st.inVals?.[i] ?? 0;
-    });
-    [...sec.querySelectorAll(`.floor-${f}-out`)].forEach((inp,i)=>{
-      inp.value = st.outVals?.[i] ?? 0;
+      document.querySelectorAll('[data-tab-content]').forEach((section) => {
+        section.classList.toggle('hidden', section.id !== targetTabId);
+      });
     });
 
-    // coins
-    sec.querySelectorAll('.coin-count').forEach(inp=>{
-      const v = st.coins?.[inp.dataset.value] ?? 0;
-      inp.value = v;
+    function buildCashTab(tab, index) {
+      const sec = tplCash.content.querySelector('section').cloneNode(true);
+      sec.id = tab.tabId;
+      sec.dataset.section = tab.key;
+      sec.querySelector('h2').textContent = tab.key;
+
+      if (index !== 0) {
+        sec.classList.add('hidden');
+      }
+
+      const coinGrid = sec.querySelector('.coin-grid');
+      COINS.forEach(({ label, value }) => {
+        const coinRow = tplCoin.content.firstElementChild.cloneNode(true);
+        coinRow.querySelector('label').textContent = label;
+        coinRow.querySelector('input').dataset.value = value;
+        coinGrid.appendChild(coinRow);
+      });
+
+      sec.addEventListener('input', () => {
+        recalcSection(sec);
+        recalcTotal();
+      });
+
+      sec.addEventListener('focus', (e) => {
+        if (!e.target.classList.contains('cash-input')) return;
+        e.target.value = String(num(e.target.value));
+      }, true);
+
+      sec.addEventListener('blur', (e) => {
+        if (!e.target.classList.contains('cash-input')) return;
+        e.target.value = fmt(num(e.target.value));
+        recalcSection(sec);
+        recalcTotal();
+      }, true);
+
+      return sec;
+    }
+
+    function recalcSection(sec) {
+      const bundleRaw = num(sec.querySelector('.bundle-count').value);
+      const bundleAmount = bundleRaw >= 1000000 ? bundleRaw : bundleRaw * 1000000;
+      const partialCash = num(sec.querySelector('.partial-cash').value);
+      const coinTotal = [...sec.querySelectorAll('.coin-count')].reduce((sum, input) => {
+        return sum + (num(input.value) * Number(input.dataset.value));
+      }, 0);
+
+      const todayTotal = bundleAmount + partialCash + coinTotal;
+      sec.querySelector('.today-total').textContent = fmt(todayTotal);
+      sec.dataset.todayTotal = String(todayTotal);
+    }
+
+    function recalcTotal() {
+      TABS.forEach(({ key, totalId }) => {
+        const total = Number(sections[key]?.dataset.todayTotal || 0);
+        document.getElementById(totalId).textContent = `${fmt(total)} 円`;
+      });
+    }
+
+    function formatAllInputs() {
+      document.querySelectorAll('.cash-input').forEach((input) => {
+        input.value = fmt(num(input.value));
+      });
+    }
+
+    TABS.forEach((tab, index) => {
+      const sec = buildCashTab(tab, index);
+      container.appendChild(sec);
+      sections[tab.key] = sec;
     });
 
-    // 表示整形→再計算
-    sec.querySelectorAll('.floor-input').forEach(i=>{ i.value = fmt(num(i.value)); });
-    recalcSec(sec);
-  });
+    container.appendChild(tplTotal.content.querySelector('section').cloneNode(true));
 
-  // 最終
-  const pta = document.getElementById('prev-total-all');
-  if (pta){ pta.value = fmt(state.final?.prevTotalAll ?? 0); }
-
-  recalcFinal();
-}
-
-// 保存・復元・削除API
-function saveNow(){
-  try{
-    const state = collectState();
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-    setSaveStatus('保存しました');
-  }catch(e){
-    console.error(e);
-    setSaveStatus('保存に失敗しました');
-  }
-}
-function loadIfAny(){
-  try{
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) { recalcFinal(); return; }
-    const state = JSON.parse(raw);
-    applyState(state);
-    setSaveStatus('保存データから復元済み');
-  }catch(e){
-    console.error(e);
-    setSaveStatus('復元に失敗しました');
-  }
-}
-function clearSaved(){
-  localStorage.removeItem(LS_KEY);
-  setSaveStatus('保存データを削除しました');
-}
-const autoSave = debounce(saveNow, 600);
-function setSaveStatus(msg){
-  const el = document.getElementById('save-status');
-  if (!el) return;
-  el.textContent = msg;
-  setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; }, 2000);
-}
-
-/* ========= 初期処理 ========= */
-function firstFormatAll(){
-  document.querySelectorAll('.floor-input').forEach(i=>{ i.value = fmt(num(i.value)); });
-}
-firstFormatAll();
-recalcFinal();
-loadIfAny();
-
-/* ========= ボタン: 保存/削除 ========= */
-document.getElementById('btn-save')?.addEventListener('click', saveNow);
-document.getElementById('btn-clear')?.addEventListener('click', clearSaved);
-</script>
-
+    formatAllInputs();
+    Object.values(sections).forEach(recalcSection);
+    recalcTotal();
+  </script>
 </body>
 </html>
